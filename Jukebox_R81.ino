@@ -1189,7 +1189,7 @@ if (scanningStage > 0) {
     }
     scanningStage = 0; //no need to scan further
     transferRecordStage = 1; //set up to transfer a record
-    debugSerial("No need for scan. Carosuel position: " + String(encoderValue, HEX));
+    debugSerial("No need for scan. Carousel position: " + String(encoderValue, HEX));
   }
 
 
@@ -1212,7 +1212,7 @@ if (scanningStage > 0) {
       digitalWrite(DETENT_COIL, HIGH); //off  
       delay(75);
       digitalWrite(MAGAZINE_MOTOR, HIGH); //off
-      debugSerial("Pre-scan for record complete. Carosuel position: " + String(encoderValue, HEX));
+      debugSerial("Pre-scan for record complete. Carousel position: " + String(encoderValue, HEX));
       scanningStage = 2; //set up for stage 2 of scan
     }
   } //end scanning stage 1  
