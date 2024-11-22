@@ -1,4 +1,5 @@
 //Robert DiNapoli 2024
+v1.01
 
 // 000 - stop current song. next song in queue should play. In record player mode, will return the record from the turntable to the magazine.
 // 100 to 299 - queue the song to play 
@@ -128,7 +129,7 @@ struct commandinfo
 };
 typedef struct commandinfo CommandInfo;
 
-#define VERSION 001
+#define VERSION 101
 #ifdef RGBLIGHTS
   #define LED1RED 2
   #define LED1GREEN 3
@@ -291,7 +292,7 @@ Tm1637Module<TmiInterface, NUM_DIGITS> ledModule(tmiInterface);
 /*====================================================================================================================*/
 /*====================================================================================================================*/
 void setup() {
-delay(1000);
+delay(1000); //stabilize before starting
 //pin setup  
 pinMode(SWITCH_MP3PLAYER, INPUT_PULLUP); //14
 pinMode(SWITCH_FREEPLAY, INPUT_PULLUP); //15
@@ -318,23 +319,37 @@ digitalWrite(TRANSFER_MOTOR, HIGH); //setup pin so that LOW triggers on
 pinMode(TRANSFER_MOTOR, OUTPUT);  //53
 attachInterrupt(digitalPinToInterrupt(SWITCH_CREDITS), addCreditFlag, FALLING); //set up an interrupt to capture credit insert
 
+//led display digits setup
+tmiInterface.begin();
+ledModule.begin();
+ledModule.setBrightness(7); //full brightness?
+
 Serial.begin(9600);
 while (!Serial) {
   delay(10);
 }
-debugSerial("Initializing");
 softSerial.begin(9600);
+
+debugSerial("Initializing");
+ledUpdateDigitsArray("rst");
+delay(1000);
 
 Button::setDebounceTime(30);
 digitalWrite(LED_RECORDPLAYING_LIGHT, LOW);
 digitalWrite(LED_MAKEANYSELECTION_LIGHT, LOW);
 
-delay(500); //stabilize before reading switches
+
 //check pcb switches
 isFreePlay = digitalRead(SWITCH_FREEPLAY); 
 isMp3Player = digitalRead(SWITCH_MP3PLAYER);
 debugSerial("isFreePlay: " + String(isFreePlay));
 debugSerial("isMp3Mplayer: " + String(isMp3Player));
+if (isMp3Player == 1) {
+  ledUpdateDigitsArray("mp3");
+} else {
+  ledUpdateDigitsArray("pho");
+}
+delay(1000);
 
 //key setup
 KeyReset.begin();
@@ -350,10 +365,6 @@ Key1.begin();
 Key0.begin();
 
     
-//led display digits setup
-tmiInterface.begin();
-ledModule.begin();
-ledModule.setBrightness(7); //full brightness?
 
 
 //stopPlaying(); //stop playing any song
@@ -1034,10 +1045,6 @@ void readPreferencesFromEEPROM() {
       debugSerial("Values from EEPROM: color pattern: " + String(currentLightsPattern) + "  color timer: " + String(customColorTimer));
       inputSelectionString = String(currentLightsPattern);
       lightsSelector();
-      //AlaColor colorsArray[3] = { ((unsigned long)customColor1R << 16 | (unsigned long)customColor1G << 8 | (unsigned long)customColor1B), ((unsigned long)customColor2R << 16 | (unsigned long)customColor2G << 8 | (unsigned long)customColor2B), ((unsigned long)customColor3R << 16 | (unsigned long)customColor3G << 8 | (unsigned long)customColor3B) }; 
-      //AlaPalette colorsPalette = { 3, colorsArray };
-      //leds.setAnimation(currentLightsPattern, customColorTimer, colorsPalette); 
-      //leds.setBrightness( ((unsigned long)customBrightnessR << 16 | (unsigned long)customBrightnessG << 8 | (unsigned long)customBrightnessB) );
     #endif
   } else { //volume was set to 255... which is impossible - so we know we can't use the eeprom values}
     debugSerial("EEPROM has default values");
@@ -1112,7 +1119,7 @@ void savePreferencesToEEPROM() {
   writeIntIntoEEPROM(4,lastSongPlayed);
   writeIntIntoEEPROM(6,playMode);
   #ifdef RGBLIGHTS
-    writeIntIntoEEPROM(8,currentLightsPattern); //see ala.h for pattern definitions
+    writeIntIntoEEPROM(8,currentLightsPattern); //our pattern number; //600 - off //601 - orange, etc
     EEPROM.update(10, customColor1R);
     EEPROM.update(11, customColor1G);
     EEPROM.update(12, customColor1B);

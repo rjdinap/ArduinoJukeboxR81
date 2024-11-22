@@ -72,6 +72,9 @@ void inputCustomBrightnessData() {
   ledUpdateDigitsArray("bb");
   delay(1000);
   customBrightnessB = getNumberInput(3, 255);
+  inputSelectionNumber = currentLightsPattern;
+  lightsSelector();
+  inputSelectionNumber = 0;
 }
 
 //698 - input custom timer only
@@ -79,6 +82,9 @@ void inputCustomTimerData() {
   ledUpdateDigitsArray("tmr");
   delay(1000);
   customColorTimer = getNumberInput(5, 32000);
+  inputSelectionNumber = currentLightsPattern;
+  lightsSelector();
+  inputSelectionNumber = 0;
 } //end function inputCustomTimerData
 
 //TODO - 699 - this routine may take a while for someone to enter all data. only allow entry when no song playing
@@ -124,6 +130,9 @@ void inputCustomLightsData() {
     ledUpdateDigitsArray("tmr");
     delay(1000);
     customColorTimer = getNumberInput(5, 32000);
+    inputSelectionNumber = currentLightsPattern;
+    lightsSelector();
+    inputSelectionNumber = 0;
   }
 } //end function inputCustomLightsData();
 
@@ -504,7 +513,7 @@ void lightsSelector() {
   } else if (inputSelectionNumber == 699) { //enter complete custom pattern
     inputCustomLightsData();
   }
-
+inputSelectionNumber = 0;
 } //end function lightsSelector
 
 
