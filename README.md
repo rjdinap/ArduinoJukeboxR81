@@ -10,6 +10,8 @@ The led display.
 A built in Mp3 player that can house thousands of songs.
 Front Panel lighting via RGB lights.
 
+It should function mostly similar to a real jukebox. Queue up songs via entering them in the keypad, and it picks them off the queue and plays them in order - it doesn't matter if the player is in mp3 mode or controlling the physical phono mechanism. The mp3 player has the advantage of using 'folders', so you can have 1 folder for Oldies, 1 folder for Rock music, 1 folder for Christmas, etc. And you can change folders via a keypad command.
+
 Compared to the real R81, We have lots of new commands available, such as: 
 Turning on random play mode.
 Sequential play mode.
