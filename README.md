@@ -3,18 +3,18 @@ Some preface: I don't have any nostagia about Jukeboxes. I've never actually see
 So here's the project: Control the insides of an AMI R81 jukebox with an Arduino. 
 
 We're going to control:
-The phono mechanism with the encoder, including detent coil to play the flip side of the record
-The original keypad
-The 'Make any selection' and 'Record playing' lights
-The led display
+The phono mechanism with the encoder, including detent coil to play the flip side of the record.
+The original keypad.
+The 'Make any selection' and 'Record playing' lights.
+The led display.
 A built in Mp3 player that can house thousands of songs.
-Front Panel lighting via RGB lights
+Front Panel lighting via RGB lights.
 
-Compared to the real R81, We have lots of new commands available, such as
-Turning on random play mode
-Sequential play mode
-Viewing the encoder postion in real time
-Changing the volume via the keypad (mp3 mode)
+Compared to the real R81, We have lots of new commands available, such as: 
+Turning on random play mode.
+Sequential play mode.
+Viewing the encoder postion in real time.
+Changing the volume via the keypad (mp3 mode).
 Changing the front panel lighting via the keypad.
 
-And let's be clear. This isn't a restoration - it's a hack. A beautiful hack, but still a hack. Had I picked up something more substantially beautiful than an R81, I may have put more effort into a restore. You can read about the full build in the PDF in the repository.
+And let's be clear. This isn't a restoration - it's a hack. A wonderful hack that saved this box from going into a landfill, but still a hack. Had I picked up something more substantially beautiful than an R81, I may have put more effort into a restore using real parts. You can read about the full build in the PDF in the repository.
