@@ -111,8 +111,6 @@
 using ace_tmi::SimpleTmi1637Interface;
 using ace_segment::Tm1637Module;
 
-
-//SoftwareSerial softSerial(10,11); //rx, tx
 SoftwareSerial softSerial(12,13); //rx, tx
 
 //setup song queue - as songs are entered, we throw them into this queue
@@ -123,7 +121,7 @@ struct songinfo
 };
 typedef struct songinfo SongInfo;
 
-//commands to the mp3 player need a delay between them, sometimes up to 800ms for the mp3 player busy to register after playing a song
+//commands to the mp3 player need a delay between them, sometimes up to 1500ms for the mp3 player busy to register after playing a song
 //we will enter all mp3 player commands into a queue, and then pick them off one at a time after an appropriate delay
 struct commandinfo
 {
@@ -170,7 +168,7 @@ typedef struct commandinfo CommandInfo;
 #define DETENT_COIL 51
 #define LED_CLOCK_PIN 52 //spi clock pin for led module tm1637
 #define TRANSFER_MOTOR 53 //record player
-
+//Analog pin 15 for randomness - lot of noise in here
 
 
 //input keypad setup
@@ -248,11 +246,11 @@ uint16_t creditPrevMillis = millis();
 uint8_t nextcmd[] = {0x7E, 0xFF, 0x06, 0x01, 0x00, 0x00, 0x00, 0xEF};
 uint8_t stopcmd[] = {0x7E, 0xFF, 0x06, 0x0e, 0x00, 0x00, 0x00, 0xEF};
 uint8_t playcmd[] = {0x7E, 0xFF, 0x06, 0x0f, 0x00, 0x02, 0x01, 0xEF};
+uint8_t eqcmd[] = {0x7E, 0xFF, 0x06, 0x07, 0x00, 0x02, 0x01, 0xEF}; //built in equalizer // I don't notice too much difference using these, so didn't code for it.
 uint8_t volcmd[] = {0x7E, 0xFF, 0x06, 0x06, 0x00, 0x00, 0x1e, 0xEF}; //max volume of 30
 /*a query with 0x48 will show you the number of songs on the whole flash card - in all folders. so if have 2 songs in folder 01 and 4 songs in
 /folder 2, the 48 query will return 6 songs. Using the 0x08 command, you can play the absolute song number - no matter which folder the song is in*/
 uint8_t querycmd[] = {0x7E, 0xFF, 0x06, 0x48, 0x00, 0x00, 0x00, 0xEF}; 
-//uint8_t playabsolutesongnumbercmd[] = {0x7E, 0xFF, 0x06, 0x08, 0x00, 0x00, 0xca, 0xEF};
 uint8_t playabsolutesongnumbercmd[] = {0x7E, 0xFF, 0x06, 0x03, 0x00, 0x00, 0xca, 0xEF};
 //record player stuff
 boolean cs2; //cam switch 2
@@ -447,14 +445,14 @@ void addCreditFlag() {
 
 //for continuous play mode 2, choose a random song from 1 to 200.
 void addRandomSongFromCurrentFolderToQueue() {
-  randomSeed(millis());
+  randomSeed(analogRead(15)); //randomSeed(millis) is not effective here, because on startup, it's always the same amount of millis!
   addSongToQueue(currentFolderNumber, random(1,200));
 } //end function addRandomSongFromCurrentFolderToQueue;
 
 
 //for continuous play mode 3, choose a random song from anywhere on the mp3 player
 void addRandomSongFromAnyFolderToQueue() {
-  randomSeed(millis());
+  randomSeed(analogRead(15));
   addSongToQueue(currentFolderNumber, random(1,totalSongsAvailable));
 } //end function addRandomSongFromAnyFolderToQueue;
 
@@ -511,7 +509,7 @@ void checkForCreditFlag() {
 //grab the next item from the song queue and play it
 void checkForNextSong() {
   if (isMp3Player == 1) {
-    //we need to wait at least 2 seconds since the play command to make sure the mp3 player has gone "busy"
+    //we need to wait at least 2.5 seconds since the play command to make sure the mp3 player has gone "busy"
     playCommandNowMillis = millis();
     if ((uint16_t) (playCommandNowMillis - playCommandPrevMillis) >= 2500) { 
       playCommandPrevMillis = playCommandNowMillis;
@@ -533,7 +531,7 @@ void checkForNextSong() {
             addSequentialSongToQueue();
           } else if (playMode ==2 && (isFreePlay ==1 || (isFreePlay == 0 && credits > 0)) ) {
             //if random play is on, and we are on free play or have credits left, add a random song to the queue
-            addRandomSongFromCurrentFolderToQueue(); //disabling... lots of extra wear on magazine.
+            addRandomSongFromCurrentFolderToQueue(); 
           } else if (playMode ==3 && (isFreePlay ==1 || (isFreePlay == 0 && credits > 0)) ) {
             //if random play for all folders is on, and we are on free play or have credits left, add a random song to the queue
             addRandomSongFromAnyFolderToQueue(); 
@@ -543,7 +541,7 @@ void checkForNextSong() {
     } //timer not met
   } else { //phono stuff here
 
-  //we need to wait at least a second since the play command to make sure the record player has gone busy
+  //we need to wait at least 1.5 seconds since the play command to make sure the record player has gone busy
     playCommandNowMillis = millis();
     if ((uint16_t) (playCommandNowMillis - playCommandPrevMillis) >= 1500) { 
       playCommandPrevMillis = playCommandNowMillis;
@@ -956,7 +954,7 @@ void processInput() {
   } else if (inputSelectionNumber == 998 ) { //save eeprom settings
      ledBlinkSetup(inputSelectionString,4,150);
      savePreferencesToEEPROM();
-  } else if (inputSelectionNumber == 999 ) { //save eeprom settings
+  } else if (inputSelectionNumber == 999 ) { //reset
      ledBlinkSetup(inputSelectionString,4,150);
      resetArduino();
   }
@@ -1219,7 +1217,6 @@ if (isRecordPlaying == 0 && transferRecordStage ==0 ) {
   isMagazineActiveFlag = 0;
   }
 } //end function scanManual
-
 
 
 
