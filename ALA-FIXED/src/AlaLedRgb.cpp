@@ -216,8 +216,8 @@ bool AlaLedRgb::runAnimation() {
             // use an 8 bit shift to divide by 256
 			//Serial.println("pin j: " + String(pins[j]) + " value: " + String((leds[i].r)));
             analogWrite(pins[j],   (leds[i].r*maxOut.r)>>8); //maxout seemed to cause a problem at one time, but working now...
-            analogWrite(pins[j+1], (leds[i].g*maxOut.r)>>8); 
-            analogWrite(pins[j+2], (leds[i].b*maxOut.r)>>8); 
+            analogWrite(pins[j+1], (leds[i].g*maxOut.g)>>8); 
+            analogWrite(pins[j+2], (leds[i].b*maxOut.b)>>8); 
         }
     }
 
