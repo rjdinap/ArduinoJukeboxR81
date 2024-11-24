@@ -1,5 +1,5 @@
 //Robert DiNapoli 2024
-v1.01
+#define VERSION 102
 
 // 000 - stop current song. next song in queue should play. In record player mode, will return the record from the turntable to the magazine.
 // 100 to 299 - queue the song to play 
@@ -8,11 +8,13 @@ v1.01
 // 750 - back to normal play mode, mode 0 - non continuous 
 // 751 - continuous play, mode 1 - sequential play - current folder. must be free play, or have credits inserted. available on phono, but not for startup.
 // 752 - continuous play, mode 2 - random play - current folder. must be free play, or have credits inserted. not available on phono
+// 753 - continuous play, mode 3 - random play - song from any mp3 folder. must be free play, or have credits inserted. not available on phono
 // 801 to 898 - if on mp3player, switch folder / directory ( 1 - 98)
 // 995 - manual magazine scan - phono only
 // 996 - encoder alignment test - phono only
-// 997 - display preferences: version, folder, volume, play mode: 0 normal, 1 sequential, 2 random
+// 997 - display preferences: version, folder, volume, play mode: 0 normal(nor), 1 sequential(seq), 2 random (ran), 3 randomall (ral)
 // 998 - save preferences to the eeprom
+// 999 - reset arduino
 
 //600 - lights off
 //601 - orange solid on
@@ -67,7 +69,7 @@ v1.01
 //650 - glow - red - 7 second timer
 //651 - glow - green - 7 second timer
 //652 - glow - blue - 7 second timer
-//653 - glow - red, customer color with custom timer
+//653 - glow - red, custom color with custom timer
 //654 - glow - random color - 7 second timer
 
 //690 - color test - enter 000 000 000 to exit
@@ -84,13 +86,14 @@ v1.01
 
 
 
-//this code uses the ALA library by bportaluri to make rgb light effects. Great concepts and code - but lots of serious bugs that make the code non functional
+//this code uses the ALA library by bportaluri to make rgb light effects. Great concepts and code - but some pointer bugs that make the code non functional
 //in the aspect we need to use it.. It's been over 20 years since I've touched C/C++ and my memory mangagement / pointer skills are pretty rusty. I think I've patched
 //everything enough to have it working properly, and also ripped out the code we don't need. Copy the ALA-FIXED directory to the arduino libraries folder.
 //restart the arduino ide. you can then go sketch -> include library and select the ala-fixed library. 
 
 #define RGBLIGHTS  //comment out this line if you aren't going to use RGB lights in your front panel
 
+#include <avr/wdt.h>
 #include <SoftwareSerial.h>
 #include <AbleButtons.h> //John Scott
 #include <ArduinoQueue.h> //Einar Arnason
@@ -129,7 +132,7 @@ struct commandinfo
 };
 typedef struct commandinfo CommandInfo;
 
-#define VERSION 101
+
 #ifdef RGBLIGHTS
   #define LED1RED 2
   #define LED1GREEN 3
@@ -248,9 +251,9 @@ uint8_t playcmd[] = {0x7E, 0xFF, 0x06, 0x0f, 0x00, 0x02, 0x01, 0xEF};
 uint8_t volcmd[] = {0x7E, 0xFF, 0x06, 0x06, 0x00, 0x00, 0x1e, 0xEF}; //max volume of 30
 /*a query with 0x48 will show you the number of songs on the whole flash card - in all folders. so if have 2 songs in folder 01 and 4 songs in
 /folder 2, the 48 query will return 6 songs. Using the 0x08 command, you can play the absolute song number - no matter which folder the song is in*/
-/*I was intending to use this as a random player for the whole flash card... but maybe in a later version*/
 uint8_t querycmd[] = {0x7E, 0xFF, 0x06, 0x48, 0x00, 0x00, 0x00, 0xEF}; 
-uint8_t playabsolutesongnumbercmd[] = {0x7E, 0xFF, 0x06, 0x08, 0x00, 0x00, 0xca, 0xEF};
+//uint8_t playabsolutesongnumbercmd[] = {0x7E, 0xFF, 0x06, 0x08, 0x00, 0x00, 0xca, 0xEF};
+uint8_t playabsolutesongnumbercmd[] = {0x7E, 0xFF, 0x06, 0x03, 0x00, 0x00, 0xca, 0xEF};
 //record player stuff
 boolean cs2; //cam switch 2
 int isRecordPlaying = 0; //0 - no record playing  1 - record playing
@@ -366,9 +369,9 @@ Key0.begin();
 
     
 
-
-//stopPlaying(); //stop playing any song
-if (isMp3Player == 1) { //if are on mp3 player, get the total songs available. //not currently used
+//the mp3 player kind of does its own thing. make it stop playing any songs after a system reset.
+addCommandToQueue(stopcmd, sizeof(stopcmd) /sizeof(stopcmd[0]) ) ;
+if (isMp3Player == 1) { //if are on mp3 player, get the total songs available. //used for playmode 3
   getTotalSongsAvailable();
   debugSerial("Total Songs on Mp3 Player: " + String(totalSongsAvailable));
 }
@@ -449,6 +452,14 @@ void addRandomSongFromCurrentFolderToQueue() {
 } //end function addRandomSongFromCurrentFolderToQueue;
 
 
+//for continuous play mode 3, choose a random song from anywhere on the mp3 player
+void addRandomSongFromAnyFolderToQueue() {
+  randomSeed(millis());
+  addSongToQueue(currentFolderNumber, random(1,totalSongsAvailable));
+} //end function addRandomSongFromAnyFolderToQueue;
+
+
+
 //for continuous play mode 1, we will increment the song by 1
 void addSequentialSongToQueue() {
   lastSongPlayed = lastSongPlayed + 1;
@@ -523,6 +534,9 @@ void checkForNextSong() {
           } else if (playMode ==2 && (isFreePlay ==1 || (isFreePlay == 0 && credits > 0)) ) {
             //if random play is on, and we are on free play or have credits left, add a random song to the queue
             addRandomSongFromCurrentFolderToQueue(); //disabling... lots of extra wear on magazine.
+          } else if (playMode ==3 && (isFreePlay ==1 || (isFreePlay == 0 && credits > 0)) ) {
+            //if random play for all folders is on, and we are on free play or have credits left, add a random song to the queue
+            addRandomSongFromAnyFolderToQueue(); 
           }  
         } //no songs in queue
       } // no song playing
@@ -548,10 +562,7 @@ void checkForNextSong() {
           if (playMode ==1 && (isFreePlay ==1 || (isFreePlay == 0 && credits > 0)) ) {
             //if sequential play is on, and we are on free play or have credits left, add the next incremental song to the queue
             addSequentialSongToQueue();
-          } else if (playMode ==2 && (isFreePlay ==1 || (isFreePlay == 0 && credits > 0)) ) {
-            //if random play is on, and we are on free play or have credits left, add a random song to the queue
-            //addRandomSongFromCurrentFolderToQueue();
-          }  
+          } 
         } //no songs in queue
       } // no song playing
     } //timer not met
@@ -614,15 +625,11 @@ void displayPreferences() {
     ledUpdateDigitsArray("seq");
   } else if (playMode == 2) {
     ledUpdateDigitsArray("ran");
+  } else if (playMode == 3) {
+    ledUpdateDigitsArray("ral");
   }
   delay(1000);
-  //char cr[] = ":::dinapoli:2023:::";
-  //for (int i=0; i< strlen(cr); i++) {
-    //String x = String(cr).substring(i,i+3);
-    //ledUpdateDigitsArray(x);
-    //delay(200);
-  //}
-  
+   
 } //end function displayPreferences
 
 
@@ -729,10 +736,10 @@ void ledBlinkSetup(String b, int count, int delay) {
 
 void ledDisplayString(String displayString) {
 //char cr[] = ":::dinapoli:2024:::";
-char cr[displayString.length()];
+char cr[displayString.length()+1];
 displayString.toCharArray(cr, displayString.length() + 1);
 
-  for (int i=0; i< strlen(cr); i++) {
+  for (int i=0; i< displayString.length(); i++) {
     String x = String(cr).substring(i,i+3);
     ledUpdateDigitsArray(x);
     delay(200);
@@ -815,7 +822,7 @@ void ledSetDigits() {
 } //end ledSetDigits
 
 
-
+//used for help translating the encoder position
 int numberDecimalToHex(int recordNumber) {
 //debugSerial("Decimal to hex input number: " + String(recordNumber, HEX));
 char recordHexChar[5];
@@ -903,7 +910,7 @@ void processInput() {
     stopPlaying();
   } else if (inputSelectionNumber >= 100 && inputSelectionNumber <= 299 ) { //add the song to queue
       if (isFreePlay == 1 || (isFreePlay == 0 && credits > 0)) { //if free play, or not free play and credits available, add song to queue
-        addSongToQueue(currentFolderNumber, inputSelectionNumber - 99);
+        addSongToQueue(currentFolderNumber, inputSelectionNumber - 99); 
         ledBlinkSetup(inputSelectionString,5,250);
       } 
   } else if (inputSelectionNumber >= 600 && inputSelectionNumber <= 699) { //lights stuff
@@ -925,6 +932,10 @@ void processInput() {
      playMode = 2;
      debugSerial("Continuous random play for current folder turned on");
      ledBlinkSetup(inputSelectionString,4,150);
+  } else if (inputSelectionNumber == 753) {
+     playMode = 3;
+     debugSerial("Continuous random play for all folders turned on");
+     ledBlinkSetup(inputSelectionString,4,150);
   } else if (inputSelectionNumber == 750) { //normal play mode
      playMode = 0;
      debugSerial("Normal play mode");
@@ -945,8 +956,10 @@ void processInput() {
   } else if (inputSelectionNumber == 998 ) { //save eeprom settings
      ledBlinkSetup(inputSelectionString,4,150);
      savePreferencesToEEPROM();
+  } else if (inputSelectionNumber == 999 ) { //save eeprom settings
+     ledBlinkSetup(inputSelectionString,4,150);
+     resetArduino();
   }
-
   inputInProgress = 0 ; //the display can go back to displaying the song in progress, if one is playing
   inputSelectionString = ""; //we've processed the input string - clear it out
 } //end function processInput
@@ -958,15 +971,36 @@ void processSongFromQueue() {
   si = songList.dequeue();
   debugSerial("Song pulled from queue - track: " + String(si.track) + "  folder: " + String(si.folder) + "  items in queue: " + String(songList.itemCount())); 
   char buffer[5];
-  sprintf(buffer, "%03d", si.track + 99); //3 digits, left filled zeros
-  currentSelectionString = String(buffer);
-  if (inputInProgress ==0 ) { //if the user is not entering any data, immediately update the display with the current song number
-    ledUpdateDigitsArray(currentSelectionString);
-  }
+  
   playcmd[5] = si.folder;
   playcmd[6] = si.track;
   lastSongPlayed = si.track;
-  playSong(playcmd,8); 
+  if (playMode ==0 || playMode ==1 || playMode ==2) { //normal play modes use folder and song #
+    sprintf(buffer, "%03d", si.track + 99); //3 digits, left filled zeros
+    currentSelectionString = String(buffer);
+    if (inputInProgress ==0 ) { //if the user is not entering any data, immediately update the display with the current song number
+      ledUpdateDigitsArray(currentSelectionString);
+    }
+    playcmd[5] = si.folder;
+    playcmd[6] = si.track;
+    lastSongPlayed = si.track;
+    playSong(playcmd,8); 
+  } else if (playMode == 3) { //special play mode, no folder. song number uses 2 positions instead of folder
+    sprintf(buffer, "%03d", si.track); //3 digits, left filled zeros
+    currentSelectionString = String(buffer);
+    if (inputInProgress ==0 ) { //we'll display a number here, but it won't really mean anything.
+      //the best I can tell is that this is the order that files were written to on the sd card. So if you write a file (let's say the first file)
+      //and then renumber it to 070 - Filename, it's now the 70th file on the sd card, numerically. But it was still written first.
+      //so playing song 070 in normal mode will play the song expected. But in absolute play mode, it's still song #1.
+      //anyway, that's my best guess.
+      ledUpdateDigitsArray(currentSelectionString);
+    }
+    playabsolutesongnumbercmd[5] = si.track >> 8; //absolute song number on the mp3 player. 1 - xxxxx. 
+    playabsolutesongnumbercmd[6] = si.track & 0xff; 
+    playSong(playabsolutesongnumbercmd,8); 
+  }
+
+  
 } //end function processSongFromQueue
 
 
@@ -1054,7 +1088,21 @@ void readPreferencesFromEEPROM() {
 } //end function readPreferencesFromEEPROM
 
 
+//I added this mainly so I could switch between phono and mp3 mode since the switches are only read on startup.
+void resetArduino() {
+ledDisplayString(":::::Reset:::1:Yes:::0:No:::");
 
+inputSelectionString = "";
+while (inputSelectionString == "") {
+  getDigitsInput();
+  if (inputSelectionString == "1") {
+    debugSerial("Reset Requuested via command 999.");
+    wdt_disable();
+    wdt_enable(20); //20ms
+    while (1) {}
+  } 
+} //end while
+} //end function resetArduino
 
 void returnRecordAsync(int forceReturn) {
  //return a record from the turntable to the carousel
@@ -1146,7 +1194,7 @@ if (isRecordPlaying == 0 && transferRecordStage ==0 ) {
   
   debugSerial("Manual Scan - Press 1 to Scan. 0 to exit.");
   isMagazineActiveFlag = 1; //consider the magazine active until we exit this routine
-  ledDisplayString("   1 Scan  0 Done");
+  ledDisplayString(":::1:Scan::0: Done:::");
   delay(200);
   ledUpdateDigitsArray("scn");
 
@@ -1275,13 +1323,13 @@ void stopPlaying() {
     debugSerial("Mp3 stop playing command issued");
     addCommandToQueue(stopcmd, sizeof(stopcmd) /sizeof(stopcmd[0]) ); //proper way to send the size of the command, normally hardcoding the value of 8 in most places
   } else { //physical phono
-      debugSerial("Phono stop playing command issued");
-      if (transferRecordStage == 0 || transferRecordStage == 4) {
-        transferRecordStage = 4; //force stage 4, which is where we need to be to initiate the record return process
-        returnRecordAsync(1); //1 - force return - we don't wait for cs2 to activate transfer
-      } else {
-        debugSerial("Transfer already in place. Try the command again shortly.");
-      }
+     debugSerial("Phono stop playing command issued");
+     if (transferRecordStage == 0 || transferRecordStage == 4) {
+       transferRecordStage = 4; //force stage 4, which is where we need to be to initiate the record return process
+       returnRecordAsync(1); //1 - force return - we don't wait for cs2 to activate transfer
+     } else {
+       debugSerial("Transfer already in place. Try the command again shortly.");
+     }
   }
 } //end stop_playing
 

@@ -63,6 +63,7 @@ return returnValue;
 
 //697 - input custom brightness only
 void inputCustomBrightnessData() {
+  debugSerial("Input Custom Brightness");
   ledUpdateDigitsArray("br");
   delay(1000);
   customBrightnessR = getNumberInput(3, 255);
@@ -73,16 +74,19 @@ void inputCustomBrightnessData() {
   delay(1000);
   customBrightnessB = getNumberInput(3, 255);
   inputSelectionNumber = currentLightsPattern;
+  debugSerial("Brightness set to: " + String(customBrightnessR) + " " + String(customBrightnessG) + " " + String(customBrightnessB));
   lightsSelector();
   inputSelectionNumber = 0;
 }
 
 //698 - input custom timer only
 void inputCustomTimerData() {
+  debugSerial("Input Custom Timer");
   ledUpdateDigitsArray("tmr");
   delay(1000);
   customColorTimer = getNumberInput(5, 32000);
   inputSelectionNumber = currentLightsPattern;
+  debugSerial("Custom timer set to: " + String(customColorTimer));
   lightsSelector();
   inputSelectionNumber = 0;
 } //end function inputCustomTimerData
@@ -90,6 +94,7 @@ void inputCustomTimerData() {
 //TODO - 699 - this routine may take a while for someone to enter all data. only allow entry when no song playing
 void inputCustomLightsData() {
   if (isRecordPlaying == 0 && transferRecordStage == 0) {
+    debugSerial("Input custom lights data");
     ledUpdateDigitsArray("c1r");
     delay(1000);
     customColor1R = getNumberInput(3, 255); //yes, the color is a byte. and the function is returning an int. But with a controlled value of 0 - 255
@@ -175,6 +180,8 @@ if (isRecordPlaying == 0 && transferRecordStage ==0 ) {
 // ON, OFF, BLINKALT, SPARKLE, SPARKLE2, PLASMA, CYCLECOLORS, FADEIN, FADEOUT, FADEINOUT, GLOW, FADECOLORS, FADECOLORSLOOP
 //based on the 3 digit number input from the keypad, setup the lights routine to display
 void lightsSelector() {
+  debugSerial("Setting lights pattern to: " + String(inputSelectionNumber));
+  randomSeed(millis());
   if (inputSelectionNumber == 600) {
     AlaColor colorsArray[1] = { Black }; 
     AlaPalette colorsPalette = { 1, colorsArray };
@@ -185,25 +192,25 @@ void lightsSelector() {
     AlaPalette colorsPalette = { 1, colorsArray };
     currentLightsPattern = inputSelectionNumber;
     leds.setAnimation(ALA_ON, 1000, colorsPalette); 
-    leds.setBrightness(0xffffff);
+    leds.setBrightness( ((unsigned long)customBrightnessR << 16 | (unsigned long)customBrightnessG << 8 | (unsigned long)customBrightnessB) );
   } else if (inputSelectionNumber == 602) { //all on red
     AlaColor colorsArray[1] = { Red }; 
     AlaPalette colorsPalette = { 1, colorsArray };
     currentLightsPattern = inputSelectionNumber;
     leds.setAnimation(ALA_ON, 1000, colorsPalette); 
-    leds.setBrightness(0xffffff);
+    leds.setBrightness( ((unsigned long)customBrightnessR << 16 | (unsigned long)customBrightnessG << 8 | (unsigned long)customBrightnessB) );
   } else if (inputSelectionNumber == 603) { //all on green
     AlaColor colorsArray[1] = { Green }; 
     AlaPalette colorsPalette = { 1, colorsArray };
     currentLightsPattern = inputSelectionNumber;
     leds.setAnimation(ALA_ON, 1000, colorsPalette); 
-    leds.setBrightness(0xffffff);
+    leds.setBrightness( ((unsigned long)customBrightnessR << 16 | (unsigned long)customBrightnessG << 8 | (unsigned long)customBrightnessB) );
   } else if (inputSelectionNumber == 604) { //all on blue
     AlaColor colorsArray[1] = { Blue }; 
     AlaPalette colorsPalette = { 1, colorsArray };
     currentLightsPattern = inputSelectionNumber;
     leds.setAnimation(ALA_ON, 1000, colorsPalette); 
-    leds.setBrightness(0xffffff);
+    leds.setBrightness( ((unsigned long)customBrightnessR << 16 | (unsigned long)customBrightnessG << 8 | (unsigned long)customBrightnessB) );
   } else if (inputSelectionNumber == 605) { //all on custom
     AlaColor colorsArray[3] = { ((unsigned long)customColor1R << 16 | (unsigned long)customColor1G << 8 | (unsigned long)customColor1B), ((unsigned long)customColor2R << 16 | (unsigned long)customColor2G << 8 | (unsigned long)customColor2B), ((unsigned long)customColor3R << 16 | (unsigned long)customColor3G << 8 | (unsigned long)customColor3B) }; 
     AlaPalette colorsPalette = { 3, colorsArray };
@@ -215,19 +222,19 @@ void lightsSelector() {
     AlaPalette colorsPalette = { 1, colorsArray };
     currentLightsPattern = inputSelectionNumber;
     leds.setAnimation(ALA_BLINKALT, 2000, colorsPalette); 
-    leds.setBrightness(0xffffff);
+    leds.setBrightness( ((unsigned long)customBrightnessR << 16 | (unsigned long)customBrightnessG << 8 | (unsigned long)customBrightnessB) );
   } else if (inputSelectionNumber == 607) { //blink green
     AlaColor colorsArray[1] = { Green }; 
     AlaPalette colorsPalette = { 1, colorsArray };
     currentLightsPattern = inputSelectionNumber;
     leds.setAnimation(ALA_BLINKALT, 2000, colorsPalette); 
-    leds.setBrightness(0xffffff);
+    leds.setBrightness( ((unsigned long)customBrightnessR << 16 | (unsigned long)customBrightnessG << 8 | (unsigned long)customBrightnessB) );
   } else if (inputSelectionNumber == 608) { //blink blue
     AlaColor colorsArray[1] = { Blue }; 
     AlaPalette colorsPalette = { 1, colorsArray };
     currentLightsPattern = inputSelectionNumber;
     leds.setAnimation(ALA_BLINKALT, 2000, colorsPalette); 
-    leds.setBrightness(0xffffff);
+    leds.setBrightness( ((unsigned long)customBrightnessR << 16 | (unsigned long)customBrightnessG << 8 | (unsigned long)customBrightnessB) );
   } else if (inputSelectionNumber == 609) { //blink custom
     AlaColor colorsArray[3] = { ((unsigned long)customColor1R << 16 | (unsigned long)customColor1G << 8 | (unsigned long)customColor1B), ((unsigned long)customColor2R << 16 | (unsigned long)customColor2G << 8 | (unsigned long)customColor2B), ((unsigned long)customColor3R << 16 | (unsigned long)customColor3G << 8 | (unsigned long)customColor3B) }; 
     AlaPalette colorsPalette = { 3, colorsArray };
@@ -239,19 +246,19 @@ void lightsSelector() {
     AlaPalette colorsPalette = { 1, colorsArray };
     currentLightsPattern = inputSelectionNumber;
     leds.setAnimation(ALA_SPARKLE, 2000, colorsPalette); 
-    leds.setBrightness(0xffffff);
+    leds.setBrightness( ((unsigned long)customBrightnessR << 16 | (unsigned long)customBrightnessG << 8 | (unsigned long)customBrightnessB) );
   } else if (inputSelectionNumber == 611) { //sparkle green
     AlaColor colorsArray[1] = { Green }; 
     AlaPalette colorsPalette = { 1, colorsArray };
     currentLightsPattern = inputSelectionNumber;
     leds.setAnimation(ALA_SPARKLE, 2000, colorsPalette); 
-    leds.setBrightness(0xffffff);
+    leds.setBrightness( ((unsigned long)customBrightnessR << 16 | (unsigned long)customBrightnessG << 8 | (unsigned long)customBrightnessB) );
   } else if (inputSelectionNumber == 612) { //sparkle blue
     AlaColor colorsArray[1] = { Blue }; 
     AlaPalette colorsPalette = { 1, colorsArray };
     currentLightsPattern = inputSelectionNumber;
     leds.setAnimation(ALA_SPARKLE, 2000, colorsPalette); 
-    leds.setBrightness(0xffffff);
+    leds.setBrightness( ((unsigned long)customBrightnessR << 16 | (unsigned long)customBrightnessG << 8 | (unsigned long)customBrightnessB) );
   } else if (inputSelectionNumber == 613) { //sparkle custom
     AlaColor colorsArray[3] = { ((unsigned long)customColor1R << 16 | (unsigned long)customColor1G << 8 | (unsigned long)customColor1B), ((unsigned long)customColor2R << 16 | (unsigned long)customColor2G << 8 | (unsigned long)customColor2B), ((unsigned long)customColor3R << 16 | (unsigned long)customColor3G << 8 | (unsigned long)customColor3B) }; 
     AlaPalette colorsPalette = { 3, colorsArray };
@@ -263,25 +270,25 @@ void lightsSelector() {
     AlaPalette colorsPalette = { 3, colorsArray };
     currentLightsPattern = inputSelectionNumber;
     leds.setAnimation(ALA_SPARKLE2, 100, colorsPalette); 
-    leds.setBrightness(0xffffff);
+    leds.setBrightness( ((unsigned long)customBrightnessR << 16 | (unsigned long)customBrightnessG << 8 | (unsigned long)customBrightnessB) );
   } else if (inputSelectionNumber == 615) { //sparkle2 greens
     AlaColor colorsArray[3] = { LightGreen, Teal, SkyBlue }; 
     AlaPalette colorsPalette = { 3, colorsArray };
     currentLightsPattern = inputSelectionNumber;
     leds.setAnimation(ALA_SPARKLE2, 100, colorsPalette); 
-    leds.setBrightness(0xffffff);
+    leds.setBrightness( ((unsigned long)customBrightnessR << 16 | (unsigned long)customBrightnessG << 8 | (unsigned long)customBrightnessB) );
   } else if (inputSelectionNumber == 616) { //sparkle2 blue
     AlaColor colorsArray[3] = { Blue, White, Aqua }; 
     AlaPalette colorsPalette = { 3, colorsArray };
     currentLightsPattern = inputSelectionNumber;
     leds.setAnimation(ALA_SPARKLE2, 100, colorsPalette); 
-    leds.setBrightness(0xffffff);
+    leds.setBrightness( ((unsigned long)customBrightnessR << 16 | (unsigned long)customBrightnessG << 8 | (unsigned long)customBrightnessB) );
   } else if (inputSelectionNumber == 617) { //sparkle2 blue
     AlaColor colorsArray[3] = { Blue, White, Red }; 
     AlaPalette colorsPalette = { 3, colorsArray };
     currentLightsPattern = inputSelectionNumber;
     leds.setAnimation(ALA_SPARKLE2, 100, colorsPalette); 
-    leds.setBrightness(0xffffff);
+    leds.setBrightness( ((unsigned long)customBrightnessR << 16 | (unsigned long)customBrightnessG << 8 | (unsigned long)customBrightnessB) );
   } else if (inputSelectionNumber == 618) { //sparkle2 custom
     AlaColor colorsArray[3] = { ((unsigned long)customColor1R << 16 | (unsigned long)customColor1G << 8 | (unsigned long)customColor1B), ((unsigned long)customColor2R << 16 | (unsigned long)customColor2G << 8 | (unsigned long)customColor2B), ((unsigned long)customColor3R << 16 | (unsigned long)customColor3G << 8 | (unsigned long)customColor3B) }; 
     AlaPalette colorsPalette = { 3, colorsArray };
@@ -299,25 +306,25 @@ void lightsSelector() {
     AlaPalette colorsPalette = { 3, colorsArray };
     currentLightsPattern = inputSelectionNumber;
     leds.setAnimation(ALA_PLASMA, 5000, colorsPalette); 
-    leds.setBrightness(0xffffff);
+    leds.setBrightness( ((unsigned long)customBrightnessR << 16 | (unsigned long)customBrightnessG << 8 | (unsigned long)customBrightnessB) );
   } else if (inputSelectionNumber == 621) { //plasma greens
     AlaColor colorsArray[3] = { LightGreen, Teal, SkyBlue }; 
     AlaPalette colorsPalette = { 3, colorsArray };
     currentLightsPattern = inputSelectionNumber;
     leds.setAnimation(ALA_PLASMA, 5000, colorsPalette); 
-    leds.setBrightness(0xffffff);
+    leds.setBrightness( ((unsigned long)customBrightnessR << 16 | (unsigned long)customBrightnessG << 8 | (unsigned long)customBrightnessB) );
   } else if (inputSelectionNumber == 622) { //plasma blue
     AlaColor colorsArray[3] = { Blue, White, Aqua }; 
     AlaPalette colorsPalette = { 3, colorsArray };
     currentLightsPattern = inputSelectionNumber;
     leds.setAnimation(ALA_PLASMA, 5000, colorsPalette); 
-    leds.setBrightness(0xffffff);
+    leds.setBrightness( ((unsigned long)customBrightnessR << 16 | (unsigned long)customBrightnessG << 8 | (unsigned long)customBrightnessB) );
   } else if (inputSelectionNumber == 623) { //plasma blue
     AlaColor colorsArray[3] = { Blue, White, Red }; 
     AlaPalette colorsPalette = { 3, colorsArray };
     currentLightsPattern = inputSelectionNumber;
     leds.setAnimation(ALA_PLASMA, 5000, colorsPalette); 
-    leds.setBrightness(0xffffff);
+    leds.setBrightness( ((unsigned long)customBrightnessR << 16 | (unsigned long)customBrightnessG << 8 | (unsigned long)customBrightnessB) );
   } else if (inputSelectionNumber == 624) { //plasma custom
     AlaColor colorsArray[3] = { ((unsigned long)customColor1R << 16 | (unsigned long)customColor1G << 8 | (unsigned long)customColor1B), ((unsigned long)customColor2R << 16 | (unsigned long)customColor2G << 8 | (unsigned long)customColor2B), ((unsigned long)customColor3R << 16 | (unsigned long)customColor3G << 8 | (unsigned long)customColor3B) }; 
     AlaPalette colorsPalette = { 3, colorsArray };
@@ -335,25 +342,25 @@ void lightsSelector() {
     AlaPalette colorsPalette = { 3, colorsArray };
     currentLightsPattern = inputSelectionNumber;
     leds.setAnimation(ALA_CYCLECOLORS, 4000, colorsPalette); 
-    leds.setBrightness(0xffffff);
+    leds.setBrightness( ((unsigned long)customBrightnessR << 16 | (unsigned long)customBrightnessG << 8 | (unsigned long)customBrightnessB) );
   } else if (inputSelectionNumber == 627) { //cycle greens
     AlaColor colorsArray[3] = { LightGreen, Teal, SkyBlue }; 
     AlaPalette colorsPalette = { 3, colorsArray };
     currentLightsPattern = inputSelectionNumber;
     leds.setAnimation(ALA_CYCLECOLORS, 4000, colorsPalette); 
-    leds.setBrightness(0xffffff);
+    leds.setBrightness( ((unsigned long)customBrightnessR << 16 | (unsigned long)customBrightnessG << 8 | (unsigned long)customBrightnessB) );
   } else if (inputSelectionNumber == 628) { //cycle blue white aqua
     AlaColor colorsArray[3] = { Blue, White, Aqua }; 
     AlaPalette colorsPalette = { 3, colorsArray };
     currentLightsPattern = inputSelectionNumber;
     leds.setAnimation(ALA_CYCLECOLORS, 4000, colorsPalette); 
-    leds.setBrightness(0xffffff);
+    leds.setBrightness( ((unsigned long)customBrightnessR << 16 | (unsigned long)customBrightnessG << 8 | (unsigned long)customBrightnessB) );
   } else if (inputSelectionNumber == 629) { //cycle blue white red
     AlaColor colorsArray[3] = { Blue, White, Red }; 
     AlaPalette colorsPalette = { 3, colorsArray };
     currentLightsPattern = inputSelectionNumber;
     leds.setAnimation(ALA_CYCLECOLORS, 4000, colorsPalette); 
-    leds.setBrightness(0xffffff);
+    leds.setBrightness( ((unsigned long)customBrightnessR << 16 | (unsigned long)customBrightnessG << 8 | (unsigned long)customBrightnessB) );
   } else if (inputSelectionNumber == 630) { //cycle custom
     AlaColor colorsArray[3] = { ((unsigned long)customColor1R << 16 | (unsigned long)customColor1G << 8 | (unsigned long)customColor1B), ((unsigned long)customColor2R << 16 | (unsigned long)customColor2G << 8 | (unsigned long)customColor2B), ((unsigned long)customColor3R << 16 | (unsigned long)customColor3G << 8 | (unsigned long)customColor3B) }; 
     AlaPalette colorsPalette = { 3, colorsArray };
@@ -371,25 +378,25 @@ void lightsSelector() {
     AlaPalette colorsPalette = { 3, colorsArray };
     currentLightsPattern = inputSelectionNumber;
     leds.setAnimation(ALA_MOVINGGRADIENT, 4000, colorsPalette); 
-    leds.setBrightness(0xffffff);
+    leds.setBrightness( ((unsigned long)customBrightnessR << 16 | (unsigned long)customBrightnessG << 8 | (unsigned long)customBrightnessB) );
   } else if (inputSelectionNumber == 633) { //moving gradient lightgreen teal skyblue
     AlaColor colorsArray[3] = { LightGreen, Teal, SkyBlue }; 
     AlaPalette colorsPalette = { 3, colorsArray };
     currentLightsPattern = inputSelectionNumber;
     leds.setAnimation(ALA_MOVINGGRADIENT, 4000, colorsPalette); 
-    leds.setBrightness(0xffffff);
+    leds.setBrightness( ((unsigned long)customBrightnessR << 16 | (unsigned long)customBrightnessG << 8 | (unsigned long)customBrightnessB) );
   } else if (inputSelectionNumber == 634) { //moving gradient blue white aqua
     AlaColor colorsArray[3] = { Blue, White, Aqua }; 
     AlaPalette colorsPalette = { 3, colorsArray };
     currentLightsPattern = inputSelectionNumber;
     leds.setAnimation(ALA_MOVINGGRADIENT, 4000, colorsPalette); 
-    leds.setBrightness(0xffffff);
+    leds.setBrightness( ((unsigned long)customBrightnessR << 16 | (unsigned long)customBrightnessG << 8 | (unsigned long)customBrightnessB) );
   } else if (inputSelectionNumber == 635) { //moving gradient blue white red
     AlaColor colorsArray[3] = { Blue, White, Red }; 
     AlaPalette colorsPalette = { 3, colorsArray };
     currentLightsPattern = inputSelectionNumber;
     leds.setAnimation(ALA_MOVINGGRADIENT, 4000, colorsPalette); 
-    leds.setBrightness(0xffffff);
+    leds.setBrightness( ((unsigned long)customBrightnessR << 16 | (unsigned long)customBrightnessG << 8 | (unsigned long)customBrightnessB) );
   } else if (inputSelectionNumber == 636) { //moving gradient custom
     AlaColor colorsArray[3] = { ((unsigned long)customColor1R << 16 | (unsigned long)customColor1G << 8 | (unsigned long)customColor1B), ((unsigned long)customColor2R << 16 | (unsigned long)customColor2G << 8 | (unsigned long)customColor2B), ((unsigned long)customColor3R << 16 | (unsigned long)customColor3G << 8 | (unsigned long)customColor3B) }; 
     AlaPalette colorsPalette = { 3, colorsArray };
@@ -407,25 +414,25 @@ void lightsSelector() {
     AlaPalette colorsPalette = { 3, colorsArray };
     currentLightsPattern = inputSelectionNumber;
     leds.setAnimation(ALA_FADECOLORSLOOP, 4000, colorsPalette); 
-    leds.setBrightness(0xffffff);
+    leds.setBrightness( ((unsigned long)customBrightnessR << 16 | (unsigned long)customBrightnessG << 8 | (unsigned long)customBrightnessB) );
   } else if (inputSelectionNumber == 639) { //fade colors loop lightgreen teal skyblue
     AlaColor colorsArray[3] = { LightGreen, Teal, SkyBlue }; 
     AlaPalette colorsPalette = { 3, colorsArray };
     currentLightsPattern = inputSelectionNumber;
     leds.setAnimation(ALA_FADECOLORSLOOP, 4000, colorsPalette); 
-    leds.setBrightness(0xffffff);
+    leds.setBrightness( ((unsigned long)customBrightnessR << 16 | (unsigned long)customBrightnessG << 8 | (unsigned long)customBrightnessB) );
   } else if (inputSelectionNumber == 640) { //fade colors loop blue white aqua
     AlaColor colorsArray[3] = { Blue, White, Aqua }; 
     AlaPalette colorsPalette = { 3, colorsArray };
     currentLightsPattern = inputSelectionNumber;
     leds.setAnimation(ALA_FADECOLORSLOOP, 4000, colorsPalette); 
-    leds.setBrightness(0xffffff);
+    leds.setBrightness( ((unsigned long)customBrightnessR << 16 | (unsigned long)customBrightnessG << 8 | (unsigned long)customBrightnessB) );
   } else if (inputSelectionNumber == 641) { //fade colors loop blue white red
     AlaColor colorsArray[3] = { Blue, White, Red }; 
     AlaPalette colorsPalette = { 3, colorsArray };
     currentLightsPattern = inputSelectionNumber;
     leds.setAnimation(ALA_FADECOLORSLOOP, 4000, colorsPalette); 
-    leds.setBrightness(0xffffff);
+    leds.setBrightness( ((unsigned long)customBrightnessR << 16 | (unsigned long)customBrightnessG << 8 | (unsigned long)customBrightnessB) );
   } else if (inputSelectionNumber == 642) { //fade colors loop custom
     AlaColor colorsArray[3] = { ((unsigned long)customColor1R << 16 | (unsigned long)customColor1G << 8 | (unsigned long)customColor1B), ((unsigned long)customColor2R << 16 | (unsigned long)customColor2G << 8 | (unsigned long)customColor2B), ((unsigned long)customColor3R << 16 | (unsigned long)customColor3G << 8 | (unsigned long)customColor3B) }; 
     AlaPalette colorsPalette = { 3, colorsArray };
@@ -443,25 +450,25 @@ void lightsSelector() {
     AlaPalette colorsPalette = { 3, colorsArray };
     currentLightsPattern = inputSelectionNumber;
     leds.setAnimation(ALA_MOVINGBARS, 2000, colorsPalette); 
-    leds.setBrightness(0xffffff);
+    leds.setBrightness( ((unsigned long)customBrightnessR << 16 | (unsigned long)customBrightnessG << 8 | (unsigned long)customBrightnessB) );
   } else if (inputSelectionNumber == 645) { //moving bars lightgreen teal skyblue
     AlaColor colorsArray[3] = { LightGreen, Teal, SkyBlue }; 
     AlaPalette colorsPalette = { 3, colorsArray };
     currentLightsPattern = inputSelectionNumber;
     leds.setAnimation(ALA_MOVINGBARS, 2000, colorsPalette); 
-    leds.setBrightness(0xffffff);
+    leds.setBrightness( ((unsigned long)customBrightnessR << 16 | (unsigned long)customBrightnessG << 8 | (unsigned long)customBrightnessB) );
   } else if (inputSelectionNumber == 646) { //moving bars blue white aqua
     AlaColor colorsArray[3] = { Blue, White, Aqua }; 
     AlaPalette colorsPalette = { 3, colorsArray };
     currentLightsPattern = inputSelectionNumber;
     leds.setAnimation(ALA_MOVINGBARS, 2000, colorsPalette); 
-    leds.setBrightness(0xffffff);
+    leds.setBrightness( ((unsigned long)customBrightnessR << 16 | (unsigned long)customBrightnessG << 8 | (unsigned long)customBrightnessB) );
   } else if (inputSelectionNumber == 647) { //moving bars blue white red
     AlaColor colorsArray[3] = { Blue, White, Red }; 
     AlaPalette colorsPalette = { 3, colorsArray };
     currentLightsPattern = inputSelectionNumber;
     leds.setAnimation(ALA_MOVINGBARS, 2000, colorsPalette); 
-    leds.setBrightness(0xffffff);
+    leds.setBrightness( ((unsigned long)customBrightnessR << 16 | (unsigned long)customBrightnessG << 8 | (unsigned long)customBrightnessB) );
   } else if (inputSelectionNumber == 648) { //moving bars custom colors
     AlaColor colorsArray[3] = { ((unsigned long)customColor1R << 16 | (unsigned long)customColor1G << 8 | (unsigned long)customColor1B), ((unsigned long)customColor2R << 16 | (unsigned long)customColor2G << 8 | (unsigned long)customColor2B), ((unsigned long)customColor3R << 16 | (unsigned long)customColor3G << 8 | (unsigned long)customColor3B) }; 
     AlaPalette colorsPalette = { 3, colorsArray };
@@ -479,19 +486,19 @@ void lightsSelector() {
     AlaPalette colorsPalette = { 1, colorsArray };
     currentLightsPattern = inputSelectionNumber;
     leds.setAnimation(ALA_GLOW, 7000, colorsPalette); 
-    leds.setBrightness(0xffffff);
+    leds.setBrightness( ((unsigned long)customBrightnessR << 16 | (unsigned long)customBrightnessG << 8 | (unsigned long)customBrightnessB) );
   } else if (inputSelectionNumber == 651) { //glow green
     AlaColor colorsArray[1] = { Green }; 
     AlaPalette colorsPalette = { 1, colorsArray };
     currentLightsPattern = inputSelectionNumber;
     leds.setAnimation(ALA_GLOW, 7000, colorsPalette); 
-    leds.setBrightness(0xffffff);
+    leds.setBrightness( ((unsigned long)customBrightnessR << 16 | (unsigned long)customBrightnessG << 8 | (unsigned long)customBrightnessB) );
   } else if (inputSelectionNumber == 652) { //glow blue
     AlaColor colorsArray[1] = { Blue }; 
     AlaPalette colorsPalette = { 1, colorsArray };
     currentLightsPattern = inputSelectionNumber;
     leds.setAnimation(ALA_GLOW, 7000, colorsPalette); 
-    leds.setBrightness(0xffffff);
+    leds.setBrightness( ((unsigned long)customBrightnessR << 16 | (unsigned long)customBrightnessG << 8 | (unsigned long)customBrightnessB) );
   } else if (inputSelectionNumber == 653) { //glow custom colors
     AlaColor colorsArray[3] = { ((unsigned long)customColor1R << 16 | (unsigned long)customColor1G << 8 | (unsigned long)customColor1B), ((unsigned long)customColor2R << 16 | (unsigned long)customColor2G << 8 | (unsigned long)customColor2B), ((unsigned long)customColor3R << 16 | (unsigned long)customColor3G << 8 | (unsigned long)customColor3B) }; 
     AlaPalette colorsPalette = { 3, colorsArray };
