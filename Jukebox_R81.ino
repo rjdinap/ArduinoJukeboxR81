@@ -1,5 +1,6 @@
 //Robert DiNapoli 2024
-#define VERSION 102
+#define VERSION 103
+#define RGBLIGHTS  //comment out this line if you aren't going to use RGB lights in your front panel
 
 // 000 - stop current song. next song in queue should play. In record player mode, will return the record from the turntable to the magazine.
 // 100 to 299 - queue the song to play 
@@ -91,7 +92,6 @@
 //everything enough to have it working properly, and also ripped out the code we don't need. Copy the ALA-FIXED directory to the arduino libraries folder.
 //restart the arduino ide. you can then go sketch -> include library and select the ala-fixed library. 
 
-#define RGBLIGHTS  //comment out this line if you aren't going to use RGB lights in your front panel
 
 #include <avr/wdt.h>
 #include <SoftwareSerial.h>
@@ -106,6 +106,7 @@
   #include "AlaLedRgb.h"
   AlaLedRgb leds;
 #endif
+
 
 //library for led digit display
 using ace_tmi::SimpleTmi1637Interface;
@@ -168,6 +169,7 @@ typedef struct commandinfo CommandInfo;
 #define DETENT_COIL 51
 #define LED_CLOCK_PIN 52 //spi clock pin for led module tm1637
 #define TRANSFER_MOTOR 53 //record player
+#define PLAYCOUNTER A14
 //Analog pin 15 for randomness - lot of noise in here
 
 
@@ -310,22 +312,25 @@ pinMode(37, INPUT_PULLUP); //encoder - 128 position
 pinMode(LED_RECORDPLAYING_LIGHT, OUTPUT); //44
 pinMode(LED_MAKEANYSELECTION_LIGHT, OUTPUT); //46
 pinMode(MP3PLAYER_BUSY, INPUT); //48
-digitalWrite(TOGGLESHIFT_COIL, HIGH); //setup pin so that LOW triggers on
+digitalWrite(TOGGLESHIFT_COIL, HIGH); //setup pin so that LOW triggers on - relay 4
 pinMode(TOGGLESHIFT_COIL, OUTPUT);  //47
-digitalWrite(MAGAZINE_MOTOR, HIGH); //setup pin so that LOW triggers on
+digitalWrite(MAGAZINE_MOTOR, HIGH); //setup pin so that LOW triggers on - relay 3
 pinMode(MAGAZINE_MOTOR, OUTPUT);  //49
-digitalWrite(DETENT_COIL, HIGH); //setup pin so that LOW triggers on
+digitalWrite(DETENT_COIL, HIGH); //setup pin so that LOW triggers on - relay 2
 pinMode(DETENT_COIL, OUTPUT);  //51
-digitalWrite(TRANSFER_MOTOR, HIGH); //setup pin so that LOW triggers on
+digitalWrite(TRANSFER_MOTOR, HIGH); //setup pin so that LOW triggers on - relay 1
 pinMode(TRANSFER_MOTOR, OUTPUT);  //53
+digitalWrite(PLAYCOUNTER, HIGH); //setup pin so that LOW triggers on - relay 5
+pinMode(PLAYCOUNTER, OUTPUT); //a 14
 attachInterrupt(digitalPinToInterrupt(SWITCH_CREDITS), addCreditFlag, FALLING); //set up an interrupt to capture credit insert
+
 
 //led display digits setup
 tmiInterface.begin();
 ledModule.begin();
 ledModule.setBrightness(7); //full brightness?
 
-Serial.begin(9600);
+Serial.begin(38400);
 while (!Serial) {
   delay(10);
 }
@@ -389,6 +394,7 @@ if (isMp3Player == 0) {
   lightsSetup(); //front panel rgb lights setup
 #endif
 
+
 } //end setup function
 
 
@@ -414,6 +420,7 @@ void loop() {
 #ifdef RGBLIGHTS
   leds.runAnimation();
 #endif  
+
 
 } //end loop function
 
@@ -842,6 +849,14 @@ return finalValue;
 } //end function numberHexToDecimal
 
 
+//trigger the play counter to increment
+void playCounter() {
+  digitalWrite(PLAYCOUNTER, LOW);
+  delay(25);
+  digitalWrite(PLAYCOUNTER, HIGH);
+}
+
+
 
 //Queue a command to play a song on the mp3 player, or the phono
 //in mp3 mode, songs go from 100 - 299. song 100 plays item #1 on the mp3 player. entering song 178 on the keypad stores song 79 in the playlist
@@ -860,6 +875,7 @@ void playSong(uint8_t cmd[], int size) {
    {
     debugSerial("Phono play song command issued"); 
     //Create the proper record number to play for the phono
+    playCounter(); //trigger the play counter to trigger
     int recordNumber = cmd[6]; //grab the song number from the song queue
     recordNumber = recordNumber - 1; //adjust for phono carousel. memory will have song 63, it's really record position 62
     if (recordNumber >= 100) {
