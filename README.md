@@ -3,7 +3,7 @@ Some preface: I don't have any nostagia about Jukeboxes. I've never actually see
 So here's the project: Control the insides of an AMI R81 jukebox with an Arduino. 
 
 We're going to control:
-The phono mechanism with the encoder, including detent coil to play the flip side of the record.
+The phono mechanism with the encoder, including toggle shift coil to play the flip side of the record.
 The original keypad.
 The 'Make any selection' and 'Record playing' lights.
 The led display.
