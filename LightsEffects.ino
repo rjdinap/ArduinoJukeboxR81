@@ -64,13 +64,13 @@ return returnValue;
 //697 - input custom brightness only
 void inputCustomBrightnessData() {
   debugSerial("Input Custom Brightness");
-  ledUpdateDigitsArray("br");
+  ledDisplayDigits("br");
   delay(1000);
   customBrightnessR = getNumberInput(3, 255);
-  ledUpdateDigitsArray("bg");
+  ledDisplayDigits("bg");
   delay(1000);
   customBrightnessG = getNumberInput(3, 255);
-  ledUpdateDigitsArray("bb");
+  ledDisplayDigits("bb");
   delay(1000);
   customBrightnessB = getNumberInput(3, 255);
   inputSelectionNumber = currentLightsPattern;
@@ -82,7 +82,7 @@ void inputCustomBrightnessData() {
 //698 - input custom timer only
 void inputCustomTimerData() {
   debugSerial("Input Custom Timer");
-  ledUpdateDigitsArray("tmr");
+  ledDisplayDigits("tmr");
   delay(1000);
   customColorTimer = getNumberInput(5, 32000);
   inputSelectionNumber = currentLightsPattern;
@@ -95,44 +95,44 @@ void inputCustomTimerData() {
 void inputCustomLightsData() {
   if (isRecordPlaying == 0 && transferRecordStage == 0) {
     debugSerial("Input custom lights data");
-    ledUpdateDigitsArray("c1r");
+    ledDisplayDigits("c1r");
     delay(1000);
     customColor1R = getNumberInput(3, 255); //yes, the color is a byte. and the function is returning an int. But with a controlled value of 0 - 255
     Serial.println("color1r: " + String(customColor1R));
-    ledUpdateDigitsArray("c1g");
+    ledDisplayDigits("c1g");
     delay(1000);
     customColor1G = getNumberInput(3, 255);
-    ledUpdateDigitsArray("c1b");
+    ledDisplayDigits("c1b");
     delay(1000);
     customColor1B = getNumberInput(3, 255);
-    ledUpdateDigitsArray("c2r");
+    ledDisplayDigits("c2r");
     delay(1000);
     customColor2R = getNumberInput(3, 255);
-    ledUpdateDigitsArray("c2g");
+    ledDisplayDigits("c2g");
     delay(1000);
     customColor2G = getNumberInput(3, 255);
-    ledUpdateDigitsArray("c2b");
+    ledDisplayDigits("c2b");
     delay(1000);
     customColor2B = getNumberInput(3, 255);
-    ledUpdateDigitsArray("c3r");
+    ledDisplayDigits("c3r");
     delay(1000);
     customColor3R = getNumberInput(3, 255);
-    ledUpdateDigitsArray("c3g");
+    ledDisplayDigits("c3g");
     delay(1000);
     customColor3G = getNumberInput(3, 255);
-    ledUpdateDigitsArray("c3b");
+    ledDisplayDigits("c3b");
     delay(1000);
     customColor3B = getNumberInput(3, 255);
-    ledUpdateDigitsArray("br");
+    ledDisplayDigits("br");
     delay(1000);
     customBrightnessR = getNumberInput(3, 255);
-    ledUpdateDigitsArray("bg");
+    ledDisplayDigits("bg");
     delay(1000);
     customBrightnessG = getNumberInput(3, 255);
-    ledUpdateDigitsArray("bb");
+    ledDisplayDigits("bb");
     delay(1000);
     customBrightnessB = getNumberInput(3, 255);
-    ledUpdateDigitsArray("tmr");
+    ledDisplayDigits("tmr");
     delay(1000);
     customColorTimer = getNumberInput(5, 32000);
     inputSelectionNumber = currentLightsPattern;
@@ -154,14 +154,14 @@ int c3 = 255;
 
 if (isRecordPlaying == 0 && transferRecordStage ==0 ) {
     while (c1 != 0 || c2 != 0 || c3 != 0) {
-      ledUpdateDigitsArray("c1r");
+      ledDisplayDigits("c1r");
       delay(1000);
       c1 = getNumberInput(3, 255); //yes, the color is a byte. and the function is returning an int. But with a controlled value of 0 - 255
       Serial.println("color1r: " + String(customColor1R));
-      ledUpdateDigitsArray("c1g");
+      ledDisplayDigits("c1g");
       delay(1000);
       c2 = getNumberInput(3, 255);
-      ledUpdateDigitsArray("c1b");
+      ledDisplayDigits("c1b");
       delay(1000);
       c3 = getNumberInput(3, 255);
       AlaColor colorsArray[1] = { ((unsigned long)c1 << 16 | (unsigned long)c2 << 8 | (unsigned long)c3) }; 

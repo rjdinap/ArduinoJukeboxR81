@@ -1,5 +1,5 @@
 //Robert DiNapoli 2024
-#define VERSION 103
+#define VERSION 104
 #define RGBLIGHTS  //comment out this line if you aren't going to use RGB lights in your front panel
 
 // 000 - stop current song. next song in queue should play. In record player mode, will return the record from the turntable to the magazine.
@@ -234,8 +234,8 @@ const uint8_t PATTERNS2[75]= {
 //song and command stucture / queues
 SongInfo si; //one instance of a song structure for program use
 CommandInfo ci; //one instance of a command structure for program use
-ArduinoQueue<SongInfo> songList(200); //queue of songs
-ArduinoQueue<CommandInfo> commandList(200); //queue of commands 
+ArduinoQueue<SongInfo> songList(100); //queue of songs
+ArduinoQueue<CommandInfo> commandList(15); //queue of commands 
 //timers
 uint16_t blinkNowMillis = millis();
 uint16_t blinkPrevMillis = millis();
@@ -245,7 +245,7 @@ uint16_t playCommandNowMillis = millis();
 uint16_t playCommandPrevMillis = millis();
 uint16_t creditNowMillis = millis();
 uint16_t creditPrevMillis = millis();
-uint8_t nextcmd[] = {0x7E, 0xFF, 0x06, 0x01, 0x00, 0x00, 0x00, 0xEF};
+uint8_t  nextcmd[] = {0x7E, 0xFF, 0x06, 0x01, 0x00, 0x00, 0x00, 0xEF};
 uint8_t stopcmd[] = {0x7E, 0xFF, 0x06, 0x0e, 0x00, 0x00, 0x00, 0xEF};
 uint8_t playcmd[] = {0x7E, 0xFF, 0x06, 0x0f, 0x00, 0x02, 0x01, 0xEF};
 uint8_t eqcmd[] = {0x7E, 0xFF, 0x06, 0x07, 0x00, 0x02, 0x01, 0xEF}; //built in equalizer // I don't notice too much difference using these, so didn't code for it.
@@ -263,11 +263,12 @@ int recordNumberAdjHex = 0; //the record number to play 0 - 99 - will be adjuste
 int activateToggleShiftCoil = 0; // 1 - activate toggle shift and play opposite side of the record
 int isMagazineActiveFlag = 0; //0 - magazine off. 1 - detent coil is engaged and magazine turning
 int transferRecordStage = 0;  //0 - no action. 1 - we need to transfer a record to the turntable  2 - record on turntable and will need to be returned
-uint16_t transferRecordNowMillis = millis();
+uint16_t transferRecordNowMillis = millis(); //used to set a 2 second timer when starting transfer
 uint16_t transferRecordPrevMillis = millis();
-uint16_t scanRecordWatchdogNowMillis = millis();
+uint16_t scanRecordWatchdogNowMillis = millis(); //more than 20 seconds on a scan - flag an error
 uint16_t scanRecordWatchdogPrevMillis = millis();
-int transferRecordTimerFlag = 0; //set to 1 to initiate a delay of 2000 seconds in transferRecord()
+uint16_t transferRecordWatchdogNowMillis = millis(); //more than 5 seconds on a transfer - flag an error
+uint16_t transferRecordWatchdogPrevMillis = millis();
 //rgb lights
 #ifdef RGBLIGHTS
   byte customColor1R = 255;
@@ -328,7 +329,7 @@ attachInterrupt(digitalPinToInterrupt(SWITCH_CREDITS), addCreditFlag, FALLING); 
 //led display digits setup
 tmiInterface.begin();
 ledModule.begin();
-ledModule.setBrightness(7); //full brightness?
+ledModule.setBrightness(7); //full brightness
 
 Serial.begin(38400);
 while (!Serial) {
@@ -337,7 +338,7 @@ while (!Serial) {
 softSerial.begin(9600);
 
 debugSerial("Initializing");
-ledUpdateDigitsArray("rst");
+ledDisplayDigits("rst");
 delay(1000);
 
 Button::setDebounceTime(30);
@@ -351,9 +352,9 @@ isMp3Player = digitalRead(SWITCH_MP3PLAYER);
 debugSerial("isFreePlay: " + String(isFreePlay));
 debugSerial("isMp3Mplayer: " + String(isMp3Player));
 if (isMp3Player == 1) {
-  ledUpdateDigitsArray("mp3");
+  ledDisplayDigits("mp3");
 } else {
-  ledUpdateDigitsArray("pho");
+  ledDisplayDigits("pho");
 }
 delay(1000);
 
@@ -606,32 +607,32 @@ void displayMakeAnySelectionLight() {
 //display volume, current folder, current play mode, version
 void displayPreferences() {
   debugSerial("Values:  volume: " + String(currentVolume) + "  currentFolder: " + String(currentFolderNumber) + "  lastSongPlayed: " + String(lastSongPlayed+99) + "  playMode: " + String(playMode));
-  ledUpdateDigitsArray("Ver");
+  ledDisplayDigits("Ver");
   delay(1000);
-  ledUpdateDigitsArray(String(VERSION));
+  ledDisplayDigits(String(VERSION));
   delay(1000);
-  ledUpdateDigitsArray("Fol");
+  ledDisplayDigits("Fol");
   delay(1000);
-  ledUpdateDigitsArray(String(currentFolderNumber));
+  ledDisplayDigits(String(currentFolderNumber));
   delay(1000);
-  ledUpdateDigitsArray("Sng");
+  ledDisplayDigits("Sng");
   delay(1000);
-  ledUpdateDigitsArray(String(lastSongPlayed+99));
+  ledDisplayDigits(String(lastSongPlayed+99));
   delay(1000);
-    ledUpdateDigitsArray("vol");
+    ledDisplayDigits("vol");
   delay(1000);
-  ledUpdateDigitsArray(String(currentVolume));
+  ledDisplayDigits(String(currentVolume));
   delay(1000);
-  ledUpdateDigitsArray("mod");
+  ledDisplayDigits("mod");
   delay(1000);
   if (playMode == 0) {
-    ledUpdateDigitsArray("normal");
+    ledDisplayDigits("normal");
   } else if (playMode == 1) {
-    ledUpdateDigitsArray("seq");
+    ledDisplayDigits("seq");
   } else if (playMode == 2) {
-    ledUpdateDigitsArray("ran");
+    ledDisplayDigits("ran");
   } else if (playMode == 3) {
-    ledUpdateDigitsArray("ral");
+    ledDisplayDigits("ral");
   }
   delay(1000);
    
@@ -645,14 +646,14 @@ int exitFlag = 0;
 int encoderValue = 0;
 
 debugSerial("Encoder alignment. Press any number to exit.");
-ledUpdateDigitsArray("enc");
+ledDisplayDigits("enc");
 delay(400);
 
 while (exitFlag == 0) {
 //See which record is currently at the position in carousel
   encoderValue = readEncoder();
   //Serial.println(dataByte,HEX);
-  ledUpdateDigitsArray(String(encoderValue, HEX));
+  ledDisplayDigits(String(encoderValue, HEX));
   delay(20);
   inputSelectionString = "";
   getDigitsInput();
@@ -739,56 +740,41 @@ void ledBlinkSetup(String b, int count, int delay) {
 
 
 
-void ledDisplayString(String displayString) {
-//char cr[] = ":::dinapoli:2024:::";
-char cr[displayString.length()+1];
-displayString.toCharArray(cr, displayString.length() + 1);
-
-  for (int i=0; i< displayString.length(); i++) {
-    String x = String(cr).substring(i,i+3);
-    ledUpdateDigitsArray(x);
-    delay(200);
+void ledDisplayError(int errorNumber) {
+  int exitFlag = 0;
+  if (errorNumber == 1) {
+    debugSerial("Error: Scan took more than 20 seconds. Press any key to acknowledge.");
+    ledDisplayDigits("scn");
+    scanRecordWatchdogNowMillis = millis;
+    scanRecordWatchdogPrevMillis = millis;
+  } else if (errorNumber == 2) {
+    debugSerial("Error: Transfer took more than 9 seconds. Press any key to acknowledge.");
+    ledDisplayDigits("trf");
+    transferRecordWatchdogNowMillis = millis;
+    transferRecordWatchdogPrevMillis = millis;
+  } else if (errorNumber == 3) {
+    debugSerial("Error: Record return took more than 9 seconds. Press any key to acknowledge.");
+    ledDisplayDigits("rtn");
+    transferRecordWatchdogNowMillis = millis;
+    transferRecordWatchdogPrevMillis = millis;
   }
-}
+
+  while (exitFlag == 0) {
+    getDigitsInput();
+    if (inputSelectionString > "") {
+      debugSerial("Key Pressed. Error acknowledged.");
+      exitFlag = 1;
+      inputSelectionString = "";
+  } //if - check for keypress
+} //end while
+} //end function errorDisplay
 
 
-
-  //update the led display with whatever needs to be done
-  //This may be changing the display to show current input versus a song playing
-  //or blinking the display with a specified string
-void ledUpdateDisplay() {
-   if (inputSelectionString > "") inputInProgress = 1; else inputInProgress = 0;
-   if (blinkString == "") {
-     //if the user is doing input, show the input from the user
-    if (inputInProgress == 1) { 
-      ledUpdateDigitsArray(inputSelectionString);
-    } else {
-      // Otherwise, show the current playing song (will be blank if no song playing)
-      ledUpdateDigitsArray(currentSelectionString);
-    } //endif input in progress
-   } else {
-     //handle the blinking of an entered command
-     if (blinkCounter < blinkAmount) {
-        blinkNowMillis = millis();
-        if ((uint16_t) (blinkNowMillis - blinkPrevMillis) > (blinkDelay*2)) { 
-          blinkPrevMillis = blinkNowMillis; 
-          blinkCounter = blinkCounter + 1;
-        } else if ((uint16_t) (blinkNowMillis - blinkPrevMillis) >= blinkDelay) { //blink off
-          ledUpdateDigitsArray(""); //update the leddigits array, given a string
-        } else if ((uint16_t) (blinkNowMillis - blinkPrevMillis) >= 0) { //blink on
-          ledUpdateDigitsArray(blinkString);
-        }  
-      } else { //blink counter > blink amount, reset it
-        blinkCounter = 0;
-        blinkString = "";
-      } //end counter 
-   } //end if blinkString > ""
-} //end function ledUpdateDisplay
 
 
 
 //given a string containing 0 -3 digits, fill the ledDigits array with the numbers 1 - 9 for each led position. Or number 10 for a blank digit
-void ledUpdateDigitsArray(String s) {
+void ledDisplayDigits(String s) {
   //debugSerial("led string: " + s);
   if (s.length() == 0) {
     ledDigits[2] = 10; //off
@@ -808,13 +794,8 @@ void ledUpdateDigitsArray(String s) {
     ledDigits[0] = s[2]-48;
     //debug_serial("digit1:" + String(ledDigits[2]) + " digit2:" + String(ledDigits[1]) + " digit3:" + String(ledDigits[0]));
   }
-  ledSetDigits(); //set the pattern for each led on the physical display, using the leddigits array
-} //end ledUpdateDigitsArray
 
-
-
-//get the pattern for each digit in the ledDigits array, and put it on the physical led module for each position
-void ledSetDigits() {
+  //get the pattern for each digit in the ledDigits array, and put it on the physical led module for each position
   //debugSerial("digit1 output: " + String(ledDigits[2]) + " digit2 output :" + String(ledDigits[1]) + " digit3 output: " + String(ledDigits[0]));
   // Update the display
   uint8_t pattern = PATTERNS2[ledDigits[0]]; 
@@ -824,7 +805,59 @@ void ledSetDigits() {
   uint8_t pattern3 = PATTERNS2[ledDigits[2]]; 
   ledModule.setPatternAt(0, pattern3);
   ledModule.flush();
-} //end ledSetDigits
+} //end ledDisplayDigits
+
+
+
+
+void ledDisplayString(String displayString) {
+//char cr[] = ":::dinapoli:2024:::";
+char cr[displayString.length()+1];
+displayString.toCharArray(cr, displayString.length() + 1);
+
+  for (int i=0; i< displayString.length(); i++) {
+    String x = String(cr).substring(i,i+3);
+    ledDisplayDigits(x);
+    delay(200);
+  }
+}
+
+
+
+  //update the led display with whatever needs to be done
+  //This may be changing the display to show current input versus a song playing
+  //or blinking the display with a specified string
+void ledUpdateDisplay() {
+   if (inputSelectionString > "") inputInProgress = 1; else inputInProgress = 0;
+   if (blinkString == "") {
+     //if the user is doing input, show the input from the user
+    if (inputInProgress == 1) { 
+      ledDisplayDigits(inputSelectionString);
+    } else {
+      // Otherwise, show the current playing song (will be blank if no song playing)
+      ledDisplayDigits(currentSelectionString);
+    } //endif input in progress
+   } else {
+     //handle the blinking of an entered command
+     if (blinkCounter < blinkAmount) {
+        blinkNowMillis = millis();
+        if ((uint16_t) (blinkNowMillis - blinkPrevMillis) > (blinkDelay*2)) { 
+          blinkPrevMillis = blinkNowMillis; 
+          blinkCounter = blinkCounter + 1;
+        } else if ((uint16_t) (blinkNowMillis - blinkPrevMillis) >= blinkDelay) { //blink off
+          ledDisplayDigits(""); //update the leddigits array, given a string
+        } else if ((uint16_t) (blinkNowMillis - blinkPrevMillis) >= 0) { //blink on
+          ledDisplayDigits(blinkString);
+        }  
+      } else { //blink counter > blink amount, reset it
+        blinkCounter = 0;
+        blinkString = "";
+      } //end counter 
+   } //end if blinkString > ""
+} //end function ledUpdateDisplay
+
+
+
 
 
 //used for help translating the encoder position
@@ -993,7 +1026,7 @@ void processSongFromQueue() {
     sprintf(buffer, "%03d", si.track + 99); //3 digits, left filled zeros
     currentSelectionString = String(buffer);
     if (inputInProgress ==0 ) { //if the user is not entering any data, immediately update the display with the current song number
-      ledUpdateDigitsArray(currentSelectionString);
+      ledDisplayDigits(currentSelectionString);
     }
     playcmd[5] = si.folder;
     playcmd[6] = si.track;
@@ -1007,7 +1040,7 @@ void processSongFromQueue() {
       //and then renumber it to 070 - Filename, it's now the 70th file on the sd card, numerically. But it was still written first.
       //so playing song 070 in normal mode will play the song expected. But in absolute play mode, it's still song #1.
       //anyway, that's my best guess.
-      ledUpdateDigitsArray(currentSelectionString);
+      ledDisplayDigits(currentSelectionString);
     }
     playabsolutesongnumbercmd[5] = si.track >> 8; //absolute song number on the mp3 player. 1 - xxxxx. 
     playabsolutesongnumbercmd[6] = si.track & 0xff; 
@@ -1118,6 +1151,8 @@ while (inputSelectionString == "") {
 } //end while
 } //end function resetArduino
 
+
+
 void returnRecordAsync(int forceReturn) {
  //return a record from the turntable to the carousel
  //Stage 4 - check for CS2 to go LOW again
@@ -1126,7 +1161,7 @@ void returnRecordAsync(int forceReturn) {
  //Stage 7 - wait for cam switch 2 to go high - second part of return transfer cycle is over
  //forceReturn - if set to 1, we ignore waiting for record end 
   if (isMagazineActiveFlag == 0) { //safety check. Do not allow transfer if the magazine is moving
-    if (transferRecordStage == 4) {
+     if (transferRecordStage == 4) {
       //debugSerial("TransferRecord Stage 4 - waiting for end of record.");
       if (forceReturn == 0) {
         cs2 = digitalRead(CAM2_SWITCH);
@@ -1142,6 +1177,8 @@ void returnRecordAsync(int forceReturn) {
         debugSerial("Returning record. Transfer motor on.");
         digitalWrite(TRANSFER_MOTOR, LOW); 
         transferRecordStage = 5;
+        transferRecordWatchdogNowMillis = millis();
+        transferRecordWatchdogPrevMillis = millis();
       }
     } else if (transferRecordStage == 5) {
         //debugSerial("TransferRecord Stage 5 - wait for 3000ms");
@@ -1168,6 +1205,20 @@ void returnRecordAsync(int forceReturn) {
         isRecordPlaying == 0;
       }
     } //endif check transfer stage
+
+ if (transferRecordStage >=5 && transferRecordStage <=7 ) {  
+    //watchdog timer check. A record transfer should take about 6 seconds. 
+     transferRecordWatchdogNowMillis = millis();
+     if ((uint16_t) (transferRecordWatchdogNowMillis - transferRecordWatchdogPrevMillis) >= 9000) { 
+        transferRecordWatchdogPrevMillis = transferRecordWatchdogNowMillis;
+        debugSerial("Record transfer watchdog triggered - more than 8 seconds to transfer.");
+        activateToggleShiftCoil = 0;
+        digitalWrite(TOGGLESHIFT_COIL, HIGH);   //make sure toggle shift coil is off
+        digitalWrite(TRANSFER_MOTOR, HIGH); //turn off transfer motor
+        transferRecordStage = 0;
+        ledDisplayError(3); //scan error
+      } //transfer watchdog timer triggered
+  } //transferrecordstage > 4 and < 7  
   } //magazine moving safety check  
 } //end function return_record
 
@@ -1210,7 +1261,7 @@ if (isRecordPlaying == 0 && transferRecordStage ==0 ) {
   isMagazineActiveFlag = 1; //consider the magazine active until we exit this routine
   ledDisplayString(":::1:Scan::0: Done:::");
   delay(200);
-  ledUpdateDigitsArray("scn");
+  ledDisplayDigits("scn");
 
   while (exitFlag == 0) {
     Key0.handle();
@@ -1257,6 +1308,9 @@ if (scanningStage > 0) {
     }
     scanningStage = 0; //no need to scan further
     transferRecordStage = 1; //set up to transfer a record
+    transferRecordWatchdogNowMillis = millis(); //set up the timer to watch record transfer
+    transferRecordWatchdogPrevMillis = millis();
+
     debugSerial("No need for scan. Carousel position: " + String(encoderValue, HEX));
   }
 
@@ -1308,6 +1362,8 @@ if (scanningStage > 0) {
       debugSerial("Scan for record complete. Final magazine position: " + String(encoderValue, HEX));
       scanningStage = 0; //scan complete
       transferRecordStage = 1; //set to 1 to initiate transfer of record from the magazine to the turntable
+      transferRecordWatchdogNowMillis = millis(); //set up the timer to watch record transfer
+      transferRecordWatchdogPrevMillis = millis();
     } //stage 2 - found correct position?
   } //end scanning stage 2
 
@@ -1320,8 +1376,7 @@ if (scanningStage > 0) {
       digitalWrite(MAGAZINE_MOTOR, HIGH); //off
       isMagazineActiveFlag = 0;
       scanningStage = 0; //scan complete
-      ledUpdateDigitsArray("Err");
-      delay(2000);
+      ledDisplayError(1); //scan error
     } //scan timer triggered
 
 } //scanning stage > 0
@@ -1339,6 +1394,8 @@ void stopPlaying() {
      debugSerial("Phono stop playing command issued");
      if (transferRecordStage == 0 || transferRecordStage == 4) {
        transferRecordStage = 4; //force stage 4, which is where we need to be to initiate the record return process
+       transferRecordWatchdogNowMillis = millis(); //set up the timer to watch record transfer
+       transferRecordWatchdogPrevMillis = millis();
        returnRecordAsync(1); //1 - force return - we don't wait for cs2 to activate transfer
      } else {
        debugSerial("Transfer already in place. Try the command again shortly.");
@@ -1354,6 +1411,7 @@ void transferRecordAsync() {
   //Stage 2 - wait for 2000ms
   //Stage 3 - wait for cam switch 2 to go high - first part of transfer cycle is over
   if (isMagazineActiveFlag == 0) { //safety check. Do not start any transfer if the magazine is moving
+  if (transferRecordStage >= 1 && transferRecordStage <=3) {
     if (transferRecordStage == 1) {
       //start a new timer
       transferRecordNowMillis = millis();
@@ -1374,18 +1432,34 @@ void transferRecordAsync() {
         //debugSerial("TransferRecord Stage 3 - wait for cs2 to go HIGH");
         cs2 = digitalRead(CAM2_SWITCH);
         if (activateToggleShiftCoil == 1) {
-          digitalWrite(TOGGLESHIFT_COIL,LOW);
+          digitalWrite(TOGGLESHIFT_COIL,LOW); // turn on coil - play flip side of record
         }      
         if (cs2 == 1) { //record has finished transfer
           activateToggleShiftCoil = 0;
           digitalWrite(TOGGLESHIFT_COIL, HIGH);   //make sure toggle shift coil is off
           digitalWrite(TRANSFER_MOTOR, HIGH); //turn off transfer motor
           debugSerial("Record on turntable. Turning transfer motor off.");
+          transferRecordWatchdogNowMillis = millis(); //reset the watchdog   
+          transferRecordWatchdogPrevMillis = millis(); //reset the watchdog   
           transferRecordStage = 4; //part of returnRecord
         } //end cs2 == 1
      } //end if transferRecordStage  
+
+       //watchdog timer check. A record transfer should take about 6 seconds. 
+       transferRecordWatchdogNowMillis = millis();
+     if ((uint16_t) (transferRecordWatchdogNowMillis - transferRecordWatchdogPrevMillis) >= 9000) { 
+        transferRecordWatchdogPrevMillis = transferRecordWatchdogNowMillis;
+        debugSerial("Record transfer watchdog triggered - more than 8 seconds to transfer.");
+        activateToggleShiftCoil = 0;
+        digitalWrite(TOGGLESHIFT_COIL, HIGH);   //make sure toggle shift coil is off
+        digitalWrite(TRANSFER_MOTOR, HIGH); //turn off transfer motor
+        transferRecordStage = 0;
+        ledDisplayError(2); //scan error
+      } //transfer watchdog timer triggered
+  } //transfer record stage > 0
   } //magazine active check
 } //end function transferRecordAsync
+
 
 
 //https://roboticsbackend.com/arduino-store-int-into-eeprom/  
