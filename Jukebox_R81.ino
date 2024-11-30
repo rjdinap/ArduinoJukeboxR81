@@ -1,5 +1,5 @@
 //Robert DiNapoli 2024
-#define VERSION 104
+#define VERSION 105
 #define RGBLIGHTS  //comment out this line if you aren't going to use RGB lights in your front panel
 
 // 000 - stop current song. next song in queue should play. In record player mode, will return the record from the turntable to the magazine.
@@ -374,7 +374,8 @@ Key0.begin();
     
 
 //the mp3 player kind of does its own thing. make it stop playing any songs after a system reset.
-addCommandToQueue(stopcmd, sizeof(stopcmd) /sizeof(stopcmd[0]) ) ;
+//yes I want to issue this command even if currently in phono mode.
+addCommandToQueue(stopcmd, sizeof(stopcmd) /sizeof(stopcmd[0]) ) ; 
 if (isMp3Player == 1) { //if are on mp3 player, get the total songs available. //used for playmode 3
   getTotalSongsAvailable();
   debugSerial("Total Songs on Mp3 Player: " + String(totalSongsAvailable));
@@ -1211,7 +1212,7 @@ void returnRecordAsync(int forceReturn) {
      transferRecordWatchdogNowMillis = millis();
      if ((uint16_t) (transferRecordWatchdogNowMillis - transferRecordWatchdogPrevMillis) >= 9000) { 
         transferRecordWatchdogPrevMillis = transferRecordWatchdogNowMillis;
-        debugSerial("Record transfer watchdog triggered - more than 8 seconds to transfer.");
+        debugSerial("Record transfer watchdog triggered - more than 9 seconds to transfer.");
         activateToggleShiftCoil = 0;
         digitalWrite(TOGGLESHIFT_COIL, HIGH);   //make sure toggle shift coil is off
         digitalWrite(TRANSFER_MOTOR, HIGH); //turn off transfer motor
@@ -1391,15 +1392,15 @@ void stopPlaying() {
     debugSerial("Mp3 stop playing command issued");
     addCommandToQueue(stopcmd, sizeof(stopcmd) /sizeof(stopcmd[0]) ); //proper way to send the size of the command, normally hardcoding the value of 8 in most places
   } else { //physical phono
-     debugSerial("Phono stop playing command issued");
-     if (transferRecordStage == 0 || transferRecordStage == 4) {
-       transferRecordStage = 4; //force stage 4, which is where we need to be to initiate the record return process
-       transferRecordWatchdogNowMillis = millis(); //set up the timer to watch record transfer
-       transferRecordWatchdogPrevMillis = millis();
-       returnRecordAsync(1); //1 - force return - we don't wait for cs2 to activate transfer
-     } else {
-       debugSerial("Transfer already in place. Try the command again shortly.");
-     }
+    debugSerial("Phono stop playing command issued");
+    if (transferRecordStage == 0 || transferRecordStage == 4) {
+      transferRecordStage = 4; //force stage 4, which is where we need to be to initiate the record return process
+      transferRecordWatchdogNowMillis = millis(); //set up the timer to watch record transfer
+      transferRecordWatchdogPrevMillis = millis();
+      returnRecordAsync(1); //1 - force return - we don't wait for cs2 to activate transfer
+    } else {
+      debugSerial("Transfer already in place. Try the command again shortly.");
+    }
   }
 } //end stop_playing
 
@@ -1449,7 +1450,7 @@ void transferRecordAsync() {
        transferRecordWatchdogNowMillis = millis();
      if ((uint16_t) (transferRecordWatchdogNowMillis - transferRecordWatchdogPrevMillis) >= 9000) { 
         transferRecordWatchdogPrevMillis = transferRecordWatchdogNowMillis;
-        debugSerial("Record transfer watchdog triggered - more than 8 seconds to transfer.");
+        debugSerial("Record transfer watchdog triggered - more than 9 seconds to transfer.");
         activateToggleShiftCoil = 0;
         digitalWrite(TOGGLESHIFT_COIL, HIGH);   //make sure toggle shift coil is off
         digitalWrite(TRANSFER_MOTOR, HIGH); //turn off transfer motor
