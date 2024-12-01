@@ -1,5 +1,5 @@
 //Robert DiNapoli 2024
-#define VERSION 105
+#define VERSION 106
 #define RGBLIGHTS  //comment out this line if you aren't going to use RGB lights in your front panel
 
 // 000 - stop current song. next song in queue should play. In record player mode, will return the record from the turntable to the magazine.
@@ -101,6 +101,8 @@
 #include <AceTMI.h> // SimpleTmi1637Interface //Brian T Park
 #include <AceSegment.h> // Tm1637Module
 #include <EEPROM.h> 
+//#define THROW_ERROR_IF_NOT_FAST // Activate this to detect where ...Fast() functions are called with NON constant parameters and are therefore still slow.
+#include <digitalWriteFast.h>
 #ifdef RGBLIGHTS
   #include <Ala.h>
   #include "AlaLedRgb.h"
@@ -313,15 +315,15 @@ pinMode(37, INPUT_PULLUP); //encoder - 128 position
 pinMode(LED_RECORDPLAYING_LIGHT, OUTPUT); //44
 pinMode(LED_MAKEANYSELECTION_LIGHT, OUTPUT); //46
 pinMode(MP3PLAYER_BUSY, INPUT); //48
-digitalWrite(TOGGLESHIFT_COIL, HIGH); //setup pin so that LOW triggers on - relay 4
+digitalWriteFast(TOGGLESHIFT_COIL, HIGH); //setup pin so that LOW triggers on - relay 4
 pinMode(TOGGLESHIFT_COIL, OUTPUT);  //47
-digitalWrite(MAGAZINE_MOTOR, HIGH); //setup pin so that LOW triggers on - relay 3
+digitalWriteFast(MAGAZINE_MOTOR, HIGH); //setup pin so that LOW triggers on - relay 3
 pinMode(MAGAZINE_MOTOR, OUTPUT);  //49
-digitalWrite(DETENT_COIL, HIGH); //setup pin so that LOW triggers on - relay 2
+digitalWriteFast(DETENT_COIL, HIGH); //setup pin so that LOW triggers on - relay 2
 pinMode(DETENT_COIL, OUTPUT);  //51
-digitalWrite(TRANSFER_MOTOR, HIGH); //setup pin so that LOW triggers on - relay 1
+digitalWriteFast(TRANSFER_MOTOR, HIGH); //setup pin so that LOW triggers on - relay 1
 pinMode(TRANSFER_MOTOR, OUTPUT);  //53
-digitalWrite(PLAYCOUNTER, HIGH); //setup pin so that LOW triggers on - relay 5
+digitalWriteFast(PLAYCOUNTER, HIGH); //setup pin so that LOW triggers on - relay 5
 pinMode(PLAYCOUNTER, OUTPUT); //a 14
 attachInterrupt(digitalPinToInterrupt(SWITCH_CREDITS), addCreditFlag, FALLING); //set up an interrupt to capture credit insert
 
@@ -342,13 +344,13 @@ ledDisplayDigits("rst");
 delay(1000);
 
 Button::setDebounceTime(30);
-digitalWrite(LED_RECORDPLAYING_LIGHT, LOW);
-digitalWrite(LED_MAKEANYSELECTION_LIGHT, LOW);
+digitalWriteFast(LED_RECORDPLAYING_LIGHT, LOW);
+digitalWriteFast(LED_MAKEANYSELECTION_LIGHT, LOW);
 
 
 //check pcb switches
-isFreePlay = digitalRead(SWITCH_FREEPLAY); 
-isMp3Player = digitalRead(SWITCH_MP3PLAYER);
+isFreePlay = digitalReadFast(SWITCH_FREEPLAY); 
+isMp3Player = digitalReadFast(SWITCH_MP3PLAYER);
 debugSerial("isFreePlay: " + String(isFreePlay));
 debugSerial("isMp3Mplayer: " + String(isMp3Player));
 if (isMp3Player == 1) {
@@ -414,9 +416,9 @@ void loop() {
   ledUpdateDisplay(); //decide what to print on the led array, either the current inputstring, or the current song playing, or blink the text for a command entered
   checkForCreditFlag(); //ISR will flag that the credit switch was triggered. Handle it here.
   if (isMp3Player == 0) { //phono mode
-    scanForRecordAsync(); //check to see if we need to scan for a new record. triggered by setting scanningState to 1 in playSong()
-    transferRecordAsync(); //check to see if we need to transfer a record from the magazine. triggered by setting transferRecordStage to 1 in scanForRecordAsync()
-    returnRecordAsync(0); //check to see if we need to return record to magazine. triggered by transferRecordStage >=4. set from transferRecordAsync
+    recordScanAsync(); //check to see if we need to scan for a new record. triggered by setting scanningState to 1 in playSong()
+    recordTransferAsync(); //check to see if we need to transfer a record from the magazine. triggered by setting transferRecordStage to 1 in scanForRecordAsync()
+    recordReturnAsync(0); //check to see if we need to return record to magazine. triggered by transferRecordStage >=4. set from transferRecordAsync
   }  
 
 #ifdef RGBLIGHTS
@@ -522,12 +524,12 @@ void checkForNextSong() {
     playCommandNowMillis = millis();
     if ((uint16_t) (playCommandNowMillis - playCommandPrevMillis) >= 2500) { 
       playCommandPrevMillis = playCommandNowMillis;
-      isMP3Playing = digitalRead(MP3PLAYER_BUSY); //1 - idle //0 - song playing
+      isMP3Playing = digitalReadFast(MP3PLAYER_BUSY); //1 - idle //0 - song playing
       if (isMP3Playing == 1) { //if the mp3 player is idle
         if (recordPlayingLight == 1) {
           debugSerial("Record playing light turned off");
           recordPlayingLight = 0;
-          digitalWrite(LED_RECORDPLAYING_LIGHT, LOW);
+          digitalWriteFast(LED_RECORDPLAYING_LIGHT, LOW);
         }
         //if the song list is not empty, grab the next song in queue, and send the play command. otherwise, clear the led display
         if (!songList.isEmpty()) {
@@ -558,7 +560,7 @@ void checkForNextSong() {
         if (recordPlayingLight == 1) {
           debugSerial("Record playing light turned off");
           recordPlayingLight = 0;
-          digitalWrite(LED_RECORDPLAYING_LIGHT, LOW);
+          digitalWriteFast(LED_RECORDPLAYING_LIGHT, LOW);
         }
         //if the song list is not empty, grab the next song in queue, and send the play command. otherwise, clear the led display
         if (!songList.isEmpty()) {
@@ -592,12 +594,12 @@ void displayMakeAnySelectionLight() {
   if (isFreePlay ==1 || credits > 0) {
     //turn the make any selection light on
     if (makeAnySelectionLight == 0) {
-      digitalWrite(LED_MAKEANYSELECTION_LIGHT,HIGH);
+      digitalWriteFast(LED_MAKEANYSELECTION_LIGHT,HIGH);
       makeAnySelectionLight = 1;
     }
   } else { //turn it off if no credits or not in free play mode 
       if (makeAnySelectionLight == 1) {
-        digitalWrite(LED_MAKEANYSELECTION_LIGHT,LOW);
+        digitalWriteFast(LED_MAKEANYSELECTION_LIGHT,LOW);
         makeAnySelectionLight = 0;
       }  
   } //handle the display light depending on free play mode or credits
@@ -638,34 +640,6 @@ void displayPreferences() {
   delay(1000);
    
 } //end function displayPreferences
-
-
-
-void encoderAlignment() { //command 996
-int x = 0;
-int exitFlag = 0;
-int encoderValue = 0;
-
-debugSerial("Encoder alignment. Press any number to exit.");
-ledDisplayDigits("enc");
-delay(400);
-
-while (exitFlag == 0) {
-//See which record is currently at the position in carousel
-  encoderValue = readEncoder();
-  //Serial.println(dataByte,HEX);
-  ledDisplayDigits(String(encoderValue, HEX));
-  delay(20);
-  inputSelectionString = "";
-  getDigitsInput();
-  if (inputSelectionString > "") {
-    debugSerial("Key Pressed. Exiting encoder alignment check.");
-    exitFlag = 1;
-    inputSelectionString = "";
-  } //if - check for keypress
-} //end while
-
-} //end function encoderAligmment
 
 
 
@@ -860,7 +834,6 @@ void ledUpdateDisplay() {
 
 
 
-
 //used for help translating the encoder position
 int numberDecimalToHex(int recordNumber) {
 //debugSerial("Decimal to hex input number: " + String(recordNumber, HEX));
@@ -883,14 +856,6 @@ return finalValue;
 } //end function numberHexToDecimal
 
 
-//trigger the play counter to increment
-void playCounter() {
-  digitalWrite(PLAYCOUNTER, LOW);
-  delay(25);
-  digitalWrite(PLAYCOUNTER, HIGH);
-}
-
-
 
 //Queue a command to play a song on the mp3 player, or the phono
 //in mp3 mode, songs go from 100 - 299. song 100 plays item #1 on the mp3 player. entering song 178 on the keypad stores song 79 in the playlist
@@ -898,7 +863,7 @@ void playCounter() {
 //phono mode: 199 should play record in carousel position 99
 void playSong(uint8_t cmd[], int size) {
    debugSerial("Record playing light turned on");
-   digitalWrite(LED_RECORDPLAYING_LIGHT, HIGH);
+   digitalWriteFast(LED_RECORDPLAYING_LIGHT, HIGH);
    recordPlayingLight = 1;
    if (isMp3Player==1) {
      debugSerial("Mp3 play song command issued");
@@ -994,7 +959,7 @@ void processInput() {
      ledBlinkSetup(inputSelectionString,4,150);
   } else if (inputSelectionNumber == 995 ) { //manual scan
     ledBlinkSetup(inputSelectionString,4,150);
-    scanManual();
+    recordScanManual();
   } else if (inputSelectionNumber == 996 ) { //encoder alignment
      ledBlinkSetup(inputSelectionString,4,150);
      encoderAlignment(); 
@@ -1047,51 +1012,7 @@ void processSongFromQueue() {
     playabsolutesongnumbercmd[6] = si.track & 0xff; 
     playSong(playabsolutesongnumbercmd,8); 
   }
-
-  
 } //end function processSongFromQueue
-
-
-
-
-int readEncoder() {
-int encoderValue;  
-byte encoderPinArray[] = {23,25,27,29,31,33,35,37}; // MSB is the rightmost
-int newBit; //used for reading encoder
-int dataByte; //used for reading encoder
-int x=0;
-
-dataByte = 0;
-for (x=0; x<8; x=x+1){
-   newBit = digitalRead(encoderPinArray[x]); // read a pin
-   dataByte = dataByte | (newBit<<x); //shift the bit into position and put in its place in the data byte
-}
-encoderValue = dataByte;
-return encoderValue;
-} //end function readEncoder
-
-
-
-
-int readEncoderDouble() {
-//lots of bad data when reading the encoder, so we'll read it twice with a quick compare to weed out bad data
-int finalValue;
-int value1 = readEncoder();
-//debugSerial("Initial value1: " + String(value1,HEX));
-delay(5);
-
-int value2 = readEncoder();
-//debugSerial("Initial value2: " + String(value2,HEX));
-if (value2 == value1) {
-  finalValue = value1; //if we read it twice, and it's the same, exit this routine
-} else {
-  finalValue = 999;
-}
-
-return finalValue;
-} //end function readEncoderDouble
-
-
 
 
 
@@ -1136,6 +1057,7 @@ void readPreferencesFromEEPROM() {
 } //end function readPreferencesFromEEPROM
 
 
+
 //I added this mainly so I could switch between phono and mp3 mode since the switches are only read on startup.
 void resetArduino() {
 ledDisplayString(":::::Reset:::1:Yes:::0:No:::");
@@ -1151,77 +1073,6 @@ while (inputSelectionString == "") {
   } 
 } //end while
 } //end function resetArduino
-
-
-
-void returnRecordAsync(int forceReturn) {
- //return a record from the turntable to the carousel
- //Stage 4 - check for CS2 to go LOW again
- //Stage 5 - wait for 3000ms
- //Stage 6 - wait for cam switch 2 to go low - first part of return transfer cycle is over
- //Stage 7 - wait for cam switch 2 to go high - second part of return transfer cycle is over
- //forceReturn - if set to 1, we ignore waiting for record end 
-  if (isMagazineActiveFlag == 0) { //safety check. Do not allow transfer if the magazine is moving
-     if (transferRecordStage == 4) {
-      //debugSerial("TransferRecord Stage 4 - waiting for end of record.");
-      if (forceReturn == 0) {
-        cs2 = digitalRead(CAM2_SWITCH);
-      } else {
-        debugSerial("Force record return activated.");
-        cs2 = 0;
-      }  
-      //Serial.println("CS2: " + String(cs2));
-      if (cs2 == 0) { //end of record detected
-        //start a new timer
-        transferRecordNowMillis = millis();
-        transferRecordPrevMillis = millis();
-        debugSerial("Returning record. Transfer motor on.");
-        digitalWrite(TRANSFER_MOTOR, LOW); 
-        transferRecordStage = 5;
-        transferRecordWatchdogNowMillis = millis();
-        transferRecordWatchdogPrevMillis = millis();
-      }
-    } else if (transferRecordStage == 5) {
-        //debugSerial("TransferRecord Stage 5 - wait for 3000ms");
-        transferRecordNowMillis = millis();
-        if ((uint16_t) (transferRecordNowMillis - transferRecordPrevMillis) >= 3000) { 
-          transferRecordPrevMillis = transferRecordNowMillis;
-          transferRecordStage = 6;
-        }
-    } else if (transferRecordStage == 6) {
-      //debugSerial("TransferRecord Stage 6 - wait for cs2 to go LOW");
-      cs2 = digitalRead(CAM2_SWITCH);
-      //Serial.println("CS2: " + String(cs2));
-      if (cs2 == 0) { //end of transfer cycle
-      transferRecordStage = 7;
-      }
-    } else if (transferRecordStage == 7) {
-      //debugSerial("TransferRecord Stage 7 - wait for cs2 to go high. Transfer motor off.");
-      cs2 = digitalRead(CAM2_SWITCH);
-      //Serial.println("CS2: " + String(cs2));
-      if (cs2 == 1) { //end of transfer cycle
-        debugSerial("Record return complete.");
-        digitalWrite(TRANSFER_MOTOR, HIGH); 
-        transferRecordStage = 0;
-        isRecordPlaying == 0;
-      }
-    } //endif check transfer stage
-
- if (transferRecordStage >=5 && transferRecordStage <=7 ) {  
-    //watchdog timer check. A record transfer should take about 6 seconds. 
-     transferRecordWatchdogNowMillis = millis();
-     if ((uint16_t) (transferRecordWatchdogNowMillis - transferRecordWatchdogPrevMillis) >= 9000) { 
-        transferRecordWatchdogPrevMillis = transferRecordWatchdogNowMillis;
-        debugSerial("Record transfer watchdog triggered - more than 9 seconds to transfer.");
-        activateToggleShiftCoil = 0;
-        digitalWrite(TOGGLESHIFT_COIL, HIGH);   //make sure toggle shift coil is off
-        digitalWrite(TRANSFER_MOTOR, HIGH); //turn off transfer motor
-        transferRecordStage = 0;
-        ledDisplayError(3); //scan error
-      } //transfer watchdog timer triggered
-  } //transferrecordstage > 4 and < 7  
-  } //magazine moving safety check  
-} //end function return_record
 
 
 
@@ -1252,139 +1103,6 @@ void savePreferencesToEEPROM() {
 
 
 
-//don't allow scanning if a record is playing
-void scanManual() { //command 995
-int exitFlag = 0;
-
-if (isRecordPlaying == 0 && transferRecordStage ==0 ) {
-  
-  debugSerial("Manual Scan - Press 1 to Scan. 0 to exit.");
-  isMagazineActiveFlag = 1; //consider the magazine active until we exit this routine
-  ledDisplayString(":::1:Scan::0: Done:::");
-  delay(200);
-  ledDisplayDigits("scn");
-
-  while (exitFlag == 0) {
-    Key0.handle();
-    Key1.handle();
-    if (Key1.isPressed()) {
-      digitalWrite(DETENT_COIL, LOW); //on
-      delay(100);
-      digitalWrite(MAGAZINE_MOTOR, LOW); //on
-    }
-    while (Key1.isPressed()) {   
-      Key1.handle();
-    }
-    digitalWrite(DETENT_COIL, HIGH); //off
-    delay(50);
-    digitalWrite(MAGAZINE_MOTOR, HIGH); //off
-    if (Key0.resetClicked()) {
-      exitFlag = 1;
-    }
-  } //end while
-  isMagazineActiveFlag = 0;
-  }
-} //end function scanManual
-
-
-
-void scanForRecordAsync() {
-//stage 1 - we'll pre-scan asynchronously for recordnumber - 1
-//once we hit record - 1, we will stay in this routine and hit stage 2
-//stage 2 - we'll scan for the record number, only 1 more position to move, but stay inside of this routine. too timing sensitive
-int encoderValue = 0;
-int recordNumberHex = 0;
-
-//scanningStage is set to 1 in playSong to tell us that we need to scan. If scanningStage is 0, just exit the function - we aren't supposed to be scanning
-if (scanningStage > 0) { 
-  //precheck -- we've been asked to scan, let's check to see if we are already at the correct position
-  encoderValue = readEncoderDouble();
-  //debugSerial("Initial encoder value: " + String(encoderValue,HEX));
-  if (encoderValue == recordNumberOrigHex) { //we are at the correct place, make sure the motor is off
-    if (isMagazineActiveFlag == 1) {
-      isMagazineActiveFlag = 0;
-      digitalWrite(DETENT_COIL, HIGH); //off
-      delay(75);
-      digitalWrite(MAGAZINE_MOTOR, HIGH); //off
-    }
-    scanningStage = 0; //no need to scan further
-    transferRecordStage = 1; //set up to transfer a record
-    transferRecordWatchdogNowMillis = millis(); //set up the timer to watch record transfer
-    transferRecordWatchdogPrevMillis = millis();
-
-    debugSerial("No need for scan. Carousel position: " + String(encoderValue, HEX));
-  }
-
-
-  //which record will we scan for: record number or record number -1 for pre-scan
-  if (scanningStage == 1) { //we need to pre-scan
-      recordNumberHex = recordNumberAdjHex;
-    } else if (scanningStage == 2) {
-      recordNumberHex = recordNumberOrigHex;
-    }
-
-  if (scanningStage == 1) {
-    if (encoderValue != recordNumberHex) {  //are we at the correct magazine postion ?
-      if (isMagazineActiveFlag == 0) { //turn on detent coil and magazine motor if needed
-        isMagazineActiveFlag = 1;
-        digitalWrite(DETENT_COIL, LOW);
-        digitalWrite(MAGAZINE_MOTOR, LOW); 
-      } //magazine active check  
-    } else { //we found the proper record
-      isMagazineActiveFlag = 0;
-      digitalWrite(DETENT_COIL, HIGH); //off  
-      delay(75);
-      digitalWrite(MAGAZINE_MOTOR, HIGH); //off
-      debugSerial("Pre-scan for record complete. Carousel position: " + String(encoderValue, HEX));
-      scanningStage = 2; //set up for stage 2 of scan
-    }
-  } //end scanning stage 1  
- 
-  if (scanningStage == 2) {
-    if (encoderValue != recordNumberHex) {  //are we at the correct magazine postion ?
-      if (isMagazineActiveFlag == 0) { //turn on detent coil and magazine motor if needed
-        isMagazineActiveFlag = 1;
-        digitalWrite(DETENT_COIL, LOW);
-        digitalWrite(MAGAZINE_MOTOR, LOW); 
-      }
-      encoderValue = readEncoderDouble();
-      //debugSerial("Encoder value: " + String(encoderValue,HEX));    
-      while (encoderValue != recordNumberHex) {
-        encoderValue = readEncoderDouble();
-        //debugSerial("Encoder value: " + String(encoderValue,HEX));    
-      }
-      //if we're here, we found the right record
-      digitalWrite(DETENT_COIL, HIGH); //off  
-      //delay(100);
-      digitalWrite(MAGAZINE_MOTOR, HIGH); //off
-      delay(50);
-      isMagazineActiveFlag = 0;
-      encoderValue = readEncoderDouble();
-      debugSerial("Scan for record complete. Final magazine position: " + String(encoderValue, HEX));
-      scanningStage = 0; //scan complete
-      transferRecordStage = 1; //set to 1 to initiate transfer of record from the magazine to the turntable
-      transferRecordWatchdogNowMillis = millis(); //set up the timer to watch record transfer
-      transferRecordWatchdogPrevMillis = millis();
-    } //stage 2 - found correct position?
-  } //end scanning stage 2
-
-  //watchdog timer check. A full revolution should take around 16 seconds. If we are trying to scan for more than 20 seconds, something is wrong.
-   scanRecordWatchdogNowMillis = millis();
-   if ((uint16_t) (scanRecordWatchdogNowMillis - scanRecordWatchdogPrevMillis) >= 20000) { 
-      scanRecordWatchdogPrevMillis = scanRecordWatchdogNowMillis;
-      debugSerial("Scan watchdog triggered - Scan taking too long.");
-      digitalWrite(DETENT_COIL, HIGH); //off  
-      digitalWrite(MAGAZINE_MOTOR, HIGH); //off
-      isMagazineActiveFlag = 0;
-      scanningStage = 0; //scan complete
-      ledDisplayError(1); //scan error
-    } //scan timer triggered
-
-} //scanning stage > 0
-} //end function scanForRecordAsync
-
-
-
 
 //stop playing the current song
 void stopPlaying() {  
@@ -1397,69 +1115,12 @@ void stopPlaying() {
       transferRecordStage = 4; //force stage 4, which is where we need to be to initiate the record return process
       transferRecordWatchdogNowMillis = millis(); //set up the timer to watch record transfer
       transferRecordWatchdogPrevMillis = millis();
-      returnRecordAsync(1); //1 - force return - we don't wait for cs2 to activate transfer
+      recordReturnAsync(1); //1 - force return - we don't wait for cs2 to activate transfer
     } else {
       debugSerial("Transfer already in place. Try the command again shortly.");
     }
   }
 } //end stop_playing
-
-
-
-
-void transferRecordAsync() {
-  //Stage 1 - setup Timer. Turn on transfer motor.
-  //Stage 2 - wait for 2000ms
-  //Stage 3 - wait for cam switch 2 to go high - first part of transfer cycle is over
-  if (isMagazineActiveFlag == 0) { //safety check. Do not start any transfer if the magazine is moving
-  if (transferRecordStage >= 1 && transferRecordStage <=3) {
-    if (transferRecordStage == 1) {
-      //start a new timer
-      transferRecordNowMillis = millis();
-      transferRecordPrevMillis = millis();
-      transferRecordStage = 2;
-      debugSerial("TransferRecord Stage 1 - setting up timer and turning on transfer motor");
-      //turn on transfer motor for 2000 ms. this should activate the cs2 switch which will stay LOW (0) until the record is on the turntable
-      debugSerial("Turning transfer motor on.");
-      digitalWrite(TRANSFER_MOTOR, LOW); 
-    } else if (transferRecordStage == 2) {
-      //debugSerial("TransferRecord Stage 2 - wait for 2000ms");
-        transferRecordNowMillis = millis();
-        if ((uint16_t) (transferRecordNowMillis - transferRecordPrevMillis) >= 2000) { 
-          transferRecordPrevMillis = transferRecordNowMillis;
-          transferRecordStage = 3;
-        }
-    } else if (transferRecordStage == 3) {
-        //debugSerial("TransferRecord Stage 3 - wait for cs2 to go HIGH");
-        cs2 = digitalRead(CAM2_SWITCH);
-        if (activateToggleShiftCoil == 1) {
-          digitalWrite(TOGGLESHIFT_COIL,LOW); // turn on coil - play flip side of record
-        }      
-        if (cs2 == 1) { //record has finished transfer
-          activateToggleShiftCoil = 0;
-          digitalWrite(TOGGLESHIFT_COIL, HIGH);   //make sure toggle shift coil is off
-          digitalWrite(TRANSFER_MOTOR, HIGH); //turn off transfer motor
-          debugSerial("Record on turntable. Turning transfer motor off.");
-          transferRecordWatchdogNowMillis = millis(); //reset the watchdog   
-          transferRecordWatchdogPrevMillis = millis(); //reset the watchdog   
-          transferRecordStage = 4; //part of returnRecord
-        } //end cs2 == 1
-     } //end if transferRecordStage  
-
-       //watchdog timer check. A record transfer should take about 6 seconds. 
-       transferRecordWatchdogNowMillis = millis();
-     if ((uint16_t) (transferRecordWatchdogNowMillis - transferRecordWatchdogPrevMillis) >= 9000) { 
-        transferRecordWatchdogPrevMillis = transferRecordWatchdogNowMillis;
-        debugSerial("Record transfer watchdog triggered - more than 9 seconds to transfer.");
-        activateToggleShiftCoil = 0;
-        digitalWrite(TOGGLESHIFT_COIL, HIGH);   //make sure toggle shift coil is off
-        digitalWrite(TRANSFER_MOTOR, HIGH); //turn off transfer motor
-        transferRecordStage = 0;
-        ledDisplayError(2); //scan error
-      } //transfer watchdog timer triggered
-  } //transfer record stage > 0
-  } //magazine active check
-} //end function transferRecordAsync
 
 
 

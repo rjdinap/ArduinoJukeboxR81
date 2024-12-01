@@ -1,5 +1,6 @@
-#ifdef RGBLIGHTS
+//functions for handling the front panel RGB lights
 
+#ifdef RGBLIGHTS
 //built in colors
 typedef enum {
   //reds
