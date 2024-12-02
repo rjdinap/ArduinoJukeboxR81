@@ -32,16 +32,35 @@ while (exitFlag == 0) {
 
 int encoderRead() {
 int encoderValue;  
-byte encoderPinArray[] = {23,25,27,29,31,33,35,37}; // MSB is the rightmost
+//byte encoderPinArray[] = {23,25,27,29,31,33,35,37}; // MSB is the rightmost
+//const byte encoderPinArray[] = {E1, E2, E3, E4, E5, E6, E7, E8}; // MSB is the rightmost
 int newBit; //used for reading encoder
 int dataByte; //used for reading encoder
 int x=0;
 
 dataByte = 0;
-for (x=0; x<8; x=x+1){
-   newBit = digitalReadFast(encoderPinArray[x]); // read a pin
-   dataByte = dataByte | (newBit<<x); //shift the bit into position and put in its place in the data byte
-}
+
+//for (x=0; x<8; x=x+1){
+//   newBit = digitalRead(encoderPinArray[x]); // read a pin - this doesn't work with digitalReadFast
+//   dataByte = dataByte | (newBit<<x); //shift the bit into position and put in its place in the data byte
+//}
+   newBit = digitalReadFast(ENCODER1); // read a pin
+   dataByte = dataByte | (newBit<<0); //shift the bit into position and put in its place in the data byte
+   newBit = digitalReadFast(ENCODER2); // read a pin
+   dataByte = dataByte | (newBit<<1); //shift the bit into position and put in its place in the data byte
+   newBit = digitalReadFast(ENCODER4); // read a pin
+   dataByte = dataByte | (newBit<<2); //shift the bit into position and put in its place in the data byte
+   newBit = digitalReadFast(ENCODER8); // read a pin
+   dataByte = dataByte | (newBit<<3); //shift the bit into position and put in its place in the data byte
+   newBit = digitalReadFast(ENCODER16); // read a pin
+   dataByte = dataByte | (newBit<<4); //shift the bit into position and put in its place in the data byte
+   newBit = digitalReadFast(ENCODER32); // read a pin
+   dataByte = dataByte | (newBit<<5); //shift the bit into position and put in its place in the data byte
+   newBit = digitalReadFast(ENCODER64); // read a pin
+   dataByte = dataByte | (newBit<<6); //shift the bit into position and put in its place in the data byte
+   newBit = digitalReadFast(ENCODER128); // read a pin
+   dataByte = dataByte | (newBit<<7); //shift the bit into position and put in its place in the data byte
+
 encoderValue = dataByte;
 return encoderValue;
 } //end function readEncoder

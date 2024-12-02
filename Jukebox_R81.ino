@@ -1,5 +1,5 @@
 //Robert DiNapoli 2024
-#define VERSION 106
+#define VERSION 107
 #define RGBLIGHTS  //comment out this line if you aren't going to use RGB lights in your front panel
 
 // 000 - stop current song. next song in queue should play. In record player mode, will return the record from the turntable to the magazine.
@@ -93,7 +93,7 @@
 //restart the arduino ide. you can then go sketch -> include library and select the ala-fixed library. 
 
 
-#include <avr/wdt.h>
+#include <avr/wdt.h> //for watchdog timer - arduino reset
 #include <SoftwareSerial.h>
 #include <AbleButtons.h> //John Scott
 #include <ArduinoQueue.h> //Einar Arnason
@@ -101,7 +101,7 @@
 #include <AceTMI.h> // SimpleTmi1637Interface //Brian T Park
 #include <AceSegment.h> // Tm1637Module
 #include <EEPROM.h> 
-//#define THROW_ERROR_IF_NOT_FAST // Activate this to detect where ...Fast() functions are called with NON constant parameters and are therefore still slow.
+//#define THROW_ERROR_IF_NOT_FAST // only for compile test... Activate this to detect where ...Fast() functions are called with NON constant parameters and are therefore still slow.
 #include <digitalWriteFast.h>
 #ifdef RGBLIGHTS
   #include <Ala.h>
@@ -152,13 +152,21 @@ typedef struct commandinfo CommandInfo;
 #define SWITCH_CREDITS 18 //interrupt 5
 #define CAM2_SWITCH 21
 #define KEY_RESET 22
+#define ENCODER1 23
 #define KEY_9 24
+#define ENCODER2 25
 #define KEY_8 26
+#define ENCODER4 27
 #define KEY_7 28
+#define ENCODER8 29
 #define KEY_6 30
+#define ENCODER16 31
 #define KEY_5 32
+#define ENCODER32 33
 #define KEY_4 34
+#define ENCODER64 35
 #define KEY_3 36
+#define ENCODER128 37
 #define KEY_2 38
 #define KEY_1 40
 #define KEY_0 42
