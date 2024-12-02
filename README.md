@@ -21,3 +21,5 @@ Changing the volume via the keypad (mp3 mode).
 Changing the front panel lighting via the keypad.
 
 And let's be clear. This isn't a restoration - it's a hack. A wonderful hack that saved this box from going into a landfill, but still a hack. Had I picked up something more substantially beautiful than an R81, I may have put more effort into a restore using real parts. You can read about the full build in the PDF in the repository.
+
+Be sure to read the Readme-Jukebox.pdf file. You can also use the Readme-Jukebox.odt file (OpenOffice format) if you don't trust opening the .pdf
