@@ -1,5 +1,5 @@
 //Robert DiNapoli 2024
-#define VERSION 108
+#define VERSION 109
 #define RGBLIGHTS  //comment out this line if you aren't going to use RGB lights in your front panel
 
 // 000 - stop current song. next song in queue should play. In record player mode, will return the record from the turntable to the magazine.
@@ -86,25 +86,23 @@
 //interrupt 5 - pin 18 - coin insert
 
 
-
+#include <avr/wdt.h> //for watchdog timer - arduino reset
+#include <SoftwareSerial.h>
+#include <AbleButtons.h> //John Scott
+#include <QList.h> //Martin Dagarin
+#include <Arduino.h>
+#include <AceTMI.h> //Brian T Park
+#include <AceSegment.h> // Tm1637Module
+#include <EEPROM.h> 
+//#define THROW_ERROR_IF_NOT_FAST // only for compile test... Activate this to detect where ...Fast() functions are called with NON constant parameters and are therefore still slow.
+#include <digitalWriteFast.h> //Watterrott
+#ifdef RGBLIGHTS
 //this code uses the ALA library by bportaluri to make rgb light effects. Great concepts and code - but some pointer bugs that make the code non functional
 //in the aspect we need to use it.. It's been over 20 years since I've touched C/C++ and my memory mangagement / pointer skills are pretty rusty. I think I've patched
 //everything enough to have it working properly, and also ripped out the code we don't need. Copy the ALA-FIXED directory to the arduino libraries folder.
 //restart the arduino ide. you can then go sketch -> include library and select the ala-fixed library. 
 
-
-#include <avr/wdt.h> //for watchdog timer - arduino reset
-#include <SoftwareSerial.h>
-#include <AbleButtons.h> //John Scott
-#include <ArduinoQueue.h> //Einar Arnason
-#include <Arduino.h>
-#include <AceTMI.h> // SimpleTmi1637Interface //Brian T Park
-#include <AceSegment.h> // Tm1637Module
-#include <EEPROM.h> 
-//#define THROW_ERROR_IF_NOT_FAST // only for compile test... Activate this to detect where ...Fast() functions are called with NON constant parameters and are therefore still slow.
-#include <digitalWriteFast.h>
-#ifdef RGBLIGHTS
-  #include <Ala.h>
+  #include <Ala.h> //bportaluri
   #include "AlaLedRgb.h"
   AlaLedRgb leds;
 #endif
@@ -217,6 +215,7 @@ int playMode = 0; //0 - normal   1 - random   2 - sequential
 int lastSongPlayed = 0; //for sequetial mode keep track of the last song played, or start at song 1
 int currentVolume = 0; 
 int totalSongsAvailable; //for the mp3 player, the total songs across all folders. only used for random mode 3
+int r81queuing = 0; // set to 0 to play next song in the queue first. set to 1 to emulate r81 queuing mode - closest record in the queue plays first. - only active in phono mode
 //led stuff
 const uint8_t NUM_DIGITS = 4;
 const uint8_t DELAY_MICROS = 100;
@@ -244,8 +243,8 @@ const uint8_t PATTERNS2[75]= {
 //song and command stucture / queues
 SongInfo si; //one instance of a song structure for program use
 CommandInfo ci; //one instance of a command structure for program use
-ArduinoQueue<SongInfo> songList(100); //queue of songs
-ArduinoQueue<CommandInfo> commandList(15); //queue of commands 
+QList<SongInfo> songList; //queue of songs
+QList<CommandInfo> commandList; //queue of commands 
 //timers
 uint16_t blinkNowMillis = millis();
 uint16_t blinkPrevMillis = millis();
@@ -449,7 +448,7 @@ void loop() {
 void addCommandToQueue(uint8_t cmd[], int size) {
   ci.cmd = cmd;
   ci.size = size;
-  commandList.enqueue(ci);
+  commandList.push_back(ci);
   //debugSerial("Adding command to queue: " + String(cmd[0]) + " - items in queue: " + String(commandList.itemCount())); 
 } //end function addCommandToQueue
 
@@ -499,8 +498,8 @@ void addSongToQueue(int folder, int track) {
   }
   si.folder = folder;
   si.track = track;
-  songList.enqueue(si);
-  debugSerial("Folder: " + String(folder) + "  Track: " + String(track) + " added to song queue" +  " - items in queue: " + String(songList.itemCount())); 
+  songList.push_back(si);
+  debugSerial("Folder: " + String(folder) + "  Track: " + String(track) + " added to song queue" +  " - items in queue: " + String(songList.size())); 
 } //end function addSongToQueue
 
 
@@ -544,7 +543,7 @@ void checkForNextSong() {
           digitalWriteFast(LED_RECORDPLAYING_LIGHT, LOW);
         }
         //if the song list is not empty, grab the next song in queue, and send the play command. otherwise, clear the led display
-        if (!songList.isEmpty()) {
+        if (songList.size() > 0) {
           processSongFromQueue();
         } else {
           //we are idle, and the song list is empty
@@ -575,7 +574,7 @@ void checkForNextSong() {
           digitalWriteFast(LED_RECORDPLAYING_LIGHT, LOW);
         }
         //if the song list is not empty, grab the next song in queue, and send the play command. otherwise, clear the led display
-        if (!songList.isEmpty()) {
+        if (songList.size() > 0) {
           processSongFromQueue();
         } else {
           //we are idle, and the song list is empty
@@ -914,13 +913,14 @@ void playSong(uint8_t cmd[], int size) {
 
 //pull a command from the command queue, and send it to the mp3 player
 void processCommandFromQueue() {
-  if (!commandList.isEmpty()) {
+  if (commandList.size() > 0) {
     //only execute a command once per second
     commandNowMillis = millis();
     if ((uint16_t) (commandNowMillis - commandPrevMillis) >= 1500) { 
       commandPrevMillis = commandNowMillis;
-      ci = commandList.dequeue();
-      debugSerial("Command pulled from queue - cmd: " + String(*ci.cmd) + "  items in queue: " + String(commandList.itemCount())); 
+      ci = commandList.front();
+      commandList.pop_front();
+      debugSerial("Command pulled from queue - cmd: " + String(*ci.cmd) + "  items in queue: " + String(commandList.size())); 
       softSerial.write(ci.cmd,ci.size);
     } //timer criteria is met
   } //a command exists in the queue
@@ -993,8 +993,38 @@ void processInput() {
 
 //if a song exists in the song queue, grab it, and send it to be played
 void processSongFromQueue() {
-  si = songList.dequeue();
-  debugSerial("Song pulled from queue - track: " + String(si.track) + "  folder: " + String(si.folder) + "  items in queue: " + String(songList.itemCount())); 
+  
+if (isMp3Player == 0 && r81queuing == 1) { //emulate R81 queuing mode for phonograph mode
+  int encoderPosition = numberHexToDecimal(encoderRead());
+  int queuePosition = 0;
+  int currentTrack = 0;
+  //debugSerial("Encoder position: " + String(encoderPosition));
+  int distance = 300;
+  for (int x = 0; x<songList.size(); x++) {
+    //1 - 200 - song # stored in queue. 
+    if (songList.get(x).track > 100) {
+      currentTrack = songList.get(x).track - 101; //b side - 101 - 200. then subtract one because first magazine position is zero.
+    } else {
+      currentTrack = songList.get(x).track - 1; //first song number is 1. but first magazine position is zero.
+    }  
+    //debugSerial("track in queue: " + String(currentTrack));
+    if (currentTrack - encoderPosition < 0) {
+      currentTrack = currentTrack + 100; //make the distance much further away
+    }
+    if (currentTrack - encoderPosition < distance) {
+      distance = currentTrack - encoderPosition;
+      //debugSerial("new next track to play: " + String(currentTrack));
+      queuePosition = x;
+    }
+  } //for loop
+    si = songList.get(queuePosition);
+    songList.clear(queuePosition);
+    debugSerial("R81 queue emulation mode: next song to play: " + String(si.track));
+  } else {
+    si = songList.front();
+    songList.pop_front();
+  }  
+  debugSerial("Song pulled from queue - track: " + String(si.track) + "  folder: " + String(si.folder) + "  items in queue: " + String(songList.size())); 
   char buffer[5];
   
   playcmd[5] = si.folder;
