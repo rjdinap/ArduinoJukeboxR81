@@ -284,7 +284,7 @@ if (scanningStage > 0) {
 //don't allow scanning if a record is playing
 void recordScanManual() { //command 995
 int exitFlag = 0;
-
+if (isMp3Player == 0) {
 if (isRecordPlaying == 0 && transferRecordStage ==0 ) {
   
   debugSerial("Manual Scan - Press 1 to Scan. 0 to exit.");
@@ -313,6 +313,7 @@ if (isRecordPlaying == 0 && transferRecordStage ==0 ) {
   } //end while
   isMagazineActiveFlag = 0;
   }
+} //phono mode activated  
 } //end function scanManual
 
 

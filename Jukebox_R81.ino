@@ -1,5 +1,5 @@
 //Robert DiNapoli 2024
-#define VERSION 107
+#define VERSION 108
 #define RGBLIGHTS  //comment out this line if you aren't going to use RGB lights in your front panel
 
 // 000 - stop current song. next song in queue should play. In record player mode, will return the record from the turntable to the magazine.
@@ -365,8 +365,12 @@ if (isMp3Player == 1) {
   ledDisplayDigits("mp3");
 } else {
   ledDisplayDigits("pho");
+  delay(1000);
+  //display encoder position on startup
+  int encoderPosition = encoderRead();
+  ledDisplayDigits(String(encoderRead(), HEX));
 }
-delay(1000);
+delay(1500);
 
 //key setup
 KeyReset.begin();
@@ -1060,6 +1064,12 @@ void readPreferencesFromEEPROM() {
   } else { //volume was set to 255... which is impossible - so we know we can't use the eeprom values}
     debugSerial("EEPROM has default values");
     currentVolume = 20; //reset the currentVolume to the default value
+    currentFolderNumber = 1;
+    playMode = 0;
+    lastSongPlayed = 1;
+    #ifdef RGBLIGHTS
+      currentLightsPattern = 601;
+    #endif  
     addCommandToQueue(volcmd, 8);
   }  
 } //end function readPreferencesFromEEPROM
