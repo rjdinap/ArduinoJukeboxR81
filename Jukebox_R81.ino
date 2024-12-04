@@ -1,6 +1,7 @@
 //Robert DiNapoli 2024
-#define VERSION 109
+#define VERSION 110
 #define RGBLIGHTS  //comment out this line if you aren't going to use RGB lights in your front panel
+
 
 // 000 - stop current song. next song in queue should play. In record player mode, will return the record from the turntable to the magazine.
 // 100 to 299 - queue the song to play 
@@ -78,7 +79,7 @@
 //698 - input customer timer value
 //699 - create custom pattern - 3 colors, timer and brightness
 //jukebox selection - 100 - 299
-//in the mp3 player, there is no position 0. entering 100 on the keypad stores song 1 in the queue
+//in the mp3 player, there is no position 0. entering 100 on the keypad stores song number 1 in the queue
 //for the phono player, magazine starts at postion 0 and go to 99. (uses the same queue for mp3 player, so need to adjust song number and subtract.)
 
 //lights: make any selection, reset and reselect, your selection, record playing. we only handle make any selection or record playing
@@ -96,12 +97,12 @@
 #include <EEPROM.h> 
 //#define THROW_ERROR_IF_NOT_FAST // only for compile test... Activate this to detect where ...Fast() functions are called with NON constant parameters and are therefore still slow.
 #include <digitalWriteFast.h> //Watterrott
+#include <AlmostRandom.h> //rubbish52
 #ifdef RGBLIGHTS
 //this code uses the ALA library by bportaluri to make rgb light effects. Great concepts and code - but some pointer bugs that make the code non functional
 //in the aspect we need to use it.. It's been over 20 years since I've touched C/C++ and my memory mangagement / pointer skills are pretty rusty. I think I've patched
 //everything enough to have it working properly, and also ripped out the code we don't need. Copy the ALA-FIXED directory to the arduino libraries folder.
 //restart the arduino ide. you can then go sketch -> include library and select the ala-fixed library. 
-
   #include <Ala.h> //bportaluri
   #include "AlaLedRgb.h"
   AlaLedRgb leds;
@@ -178,7 +179,6 @@ typedef struct commandinfo CommandInfo;
 #define LED_CLOCK_PIN 52 //spi clock pin for led module tm1637
 #define TRANSFER_MOTOR 53 //record player
 #define PLAYCOUNTER A14
-//Analog pin 15 for randomness - lot of noise in here
 
 
 //input keypad setup
@@ -278,6 +278,8 @@ uint16_t scanRecordWatchdogNowMillis = millis(); //more than 20 seconds on a sca
 uint16_t scanRecordWatchdogPrevMillis = millis();
 uint16_t transferRecordWatchdogNowMillis = millis(); //more than 5 seconds on a transfer - flag an error
 uint16_t transferRecordWatchdogPrevMillis = millis();
+//randomness
+AlmostRandom ar;
 //rgb lights
 #ifdef RGBLIGHTS
   byte customColor1R = 255;
@@ -293,7 +295,7 @@ uint16_t transferRecordWatchdogPrevMillis = millis();
   byte customBrightnessR = 55;
   byte customBrightnessG = 55;
   byte customBrightnessB = 55;
-  int currentLightsPattern = ALA_OFF; //default lights off
+  int currentLightsPattern = 601; //default lights off
 #endif 
 
 //led digit display setup
@@ -340,10 +342,12 @@ tmiInterface.begin();
 ledModule.begin();
 ledModule.setBrightness(7); //full brightness
 
+//debugging serial
 Serial.begin(38400);
 while (!Serial) {
   delay(10);
 }
+//mp3 serial
 softSerial.begin(9600);
 
 debugSerial("Initializing");
@@ -370,6 +374,13 @@ if (isMp3Player == 1) {
   ledDisplayDigits(String(encoderRead(), HEX));
 }
 delay(1500);
+
+//seed random
+long randomL = ar.getRandomLong();
+randomSeed(randomL); 
+debugSerial("Random seed: " + String(randomL));
+//debugSerial("Random methods: " + String(ar.getLastRunCode()));
+credits = 0;
 
 //key setup
 KeyReset.begin();
@@ -454,7 +465,7 @@ void addCommandToQueue(uint8_t cmd[], int size) {
 
 
 
-//interrupt 0 pin 2 - I never want to lose a coin insert. however, you can't debounce in an ISR, so set a flag, and do the debounce elsewhere
+//interrupt 5 pin 18 - I never want to lose a coin insert. however, you can't debounce in an ISR, so set a flag, and do the debounce elsewhere
 void addCreditFlag() {
     if (isFreePlay == 0) {
       creditFlag = 1;
@@ -467,14 +478,12 @@ void addCreditFlag() {
 
 //for continuous play mode 2, choose a random song from 1 to 200.
 void addRandomSongFromCurrentFolderToQueue() {
-  randomSeed(analogRead(15)); //randomSeed(millis) is not effective here, because on startup, it's always the same amount of millis!
   addSongToQueue(currentFolderNumber, random(1,200));
 } //end function addRandomSongFromCurrentFolderToQueue;
 
 
 //for continuous play mode 3, choose a random song from anywhere on the mp3 player
 void addRandomSongFromAnyFolderToQueue() {
-  randomSeed(analogRead(15));
   addSongToQueue(currentFolderNumber, random(1,totalSongsAvailable));
 } //end function addRandomSongFromAnyFolderToQueue;
 
@@ -514,11 +523,6 @@ void checkForCreditFlag() {
         creditPrevMillis = creditNowMillis;
         creditFlag = 0;
         credits = credits + 1;
-        //if (isSongPlaying == 1) { //play a credit sound, as long as no mp3 or record is playing
-          //playcmd[5]=99;
-          //playcmd[6]=2;
-          //softSerial.write(playcmd,8);
-        //}
         debugSerial("Credit added. Credits: " + String(credits)); 
       } //end if timer says we can trigger credit
     } //end if credit flag set
@@ -845,7 +849,7 @@ void ledUpdateDisplay() {
 
 
 
-//used for help translating the encoder position
+//used for help translating the encoder position. there is probably a much better way to do this
 int numberDecimalToHex(int recordNumber) {
 //debugSerial("Decimal to hex input number: " + String(recordNumber, HEX));
 char recordHexChar[5];
@@ -870,7 +874,7 @@ return finalValue;
 
 //Queue a command to play a song on the mp3 player, or the phono
 //in mp3 mode, songs go from 100 - 299. song 100 plays item #1 on the mp3 player. entering song 178 on the keypad stores song 79 in the playlist
-//in phono mode: entering 100 (#1 stored in song queue) should play record #100. 101 (stored as #2 in playlist) should play record in position 1)
+//in phono mode: entering 100 (#1 stored in song queue) should play record in magazine position 0. 101 (stored as #2 in playlist) should play record in position 1)
 //phono mode: 199 should play record in carousel position 99
 void playSong(uint8_t cmd[], int size) {
    debugSerial("Record playing light turned on");
@@ -1099,6 +1103,8 @@ void readPreferencesFromEEPROM() {
     lastSongPlayed = 1;
     #ifdef RGBLIGHTS
       currentLightsPattern = 601;
+      inputSelectionString = String(currentLightsPattern);
+      lightsSelector();
     #endif  
     addCommandToQueue(volcmd, 8);
   }  
