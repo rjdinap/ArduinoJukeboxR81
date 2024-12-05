@@ -200,7 +200,7 @@ if (scanningStage > 0) {
     if (isMagazineActiveFlag == 1) {
       isMagazineActiveFlag = 0;
       digitalWriteFast(DETENT_COIL, HIGH); //off
-      delay(75);
+      //delay(75);
       digitalWriteFast(MAGAZINE_MOTOR, HIGH); //off
     }
     scanningStage = 0; //no need to scan further
@@ -227,31 +227,51 @@ if (scanningStage > 0) {
       } //magazine active check  
     } else { //we found the proper record
       isMagazineActiveFlag = 0;
-      digitalWriteFast(DETENT_COIL, HIGH); //off  
-      delay(75);
       digitalWriteFast(MAGAZINE_MOTOR, HIGH); //off
+      digitalWriteFast(DETENT_COIL, HIGH); //off  
       debugSerial("Pre-scan for record complete. Carousel position: " + String(encoderValue, HEX));
       scanningStage = 2; //set up for stage 2 of scan
+      recordNumberHex = recordNumberOrigHex;
     }
   } //end scanning stage 1  
  
   if (scanningStage == 2) {
-    if (encoderValue != recordNumberHex) {  //are we at the correct magazine postion ?
+    transferRecordWatchdogNowMillis = millis(); //we're not doing a transfer yet; just reusing this timer as a safeguard in stage 2
+    transferRecordWatchdogPrevMillis = millis();
+    //debugSerial("Entering scanning stage 2");
+    if (encoderValue != recordNumberHex) {  //if we aren't at the correct position
       if (isMagazineActiveFlag == 0) { //turn on detent coil and magazine motor if needed
         isMagazineActiveFlag = 1;
-        digitalWriteFast(DETENT_COIL, LOW);
-        digitalWriteFast(MAGAZINE_MOTOR, LOW); 
+        digitalWriteFast(DETENT_COIL, LOW); //on
+        digitalWriteFast(MAGAZINE_MOTOR, LOW); //on
       }
+      //it would seem to make sense to leave the detent coil active until we are at the correct encoder position
+      //in reality though, it doesn't seem to "catch" in time, and my magazine is just a fraction of an inch past where it should be
+      //adding this 50ms delay and then turning it off seems to work - at least on my unit.. and then we turn the motor off a 
+      //fraction of a second later when the encoder shows the correct position. If you have any issues, try commenting out the next 2 lines
+      delay(50); 
+      digitalWriteFast(DETENT_COIL, HIGH); //off
       encoderValue = encoderReadDouble();
       //debugSerial("Encoder value: " + String(encoderValue,HEX));    
       while (encoderValue != recordNumberHex) {
         encoderValue = encoderReadDouble();
         //debugSerial("Encoder value: " + String(encoderValue,HEX));    
+        //Scan 2 should take less than 1 second.
+        transferRecordWatchdogNowMillis = millis();
+        if ((uint16_t) (transferRecordWatchdogNowMillis - transferRecordWatchdogPrevMillis) >= 1000) { 
+          transferRecordWatchdogPrevMillis = transferRecordWatchdogNowMillis;
+          debugSerial("Scan watchdog triggered - Stage 2 taking too long.");
+          digitalWriteFast(DETENT_COIL, HIGH); //off  
+          digitalWriteFast(MAGAZINE_MOTOR, HIGH); //off
+          isMagazineActiveFlag = 0;
+          scanningStage = 0; //scan complete
+          ledDisplayError(4); //scan error
+        } //scan timer triggered
       }
+      
       //if we're here, we found the right record
-      digitalWriteFast(DETENT_COIL, HIGH); //off  
-      //delay(100);
       digitalWriteFast(MAGAZINE_MOTOR, HIGH); //off
+      digitalWriteFast(DETENT_COIL, HIGH); //off  
       delay(50);
       isMagazineActiveFlag = 0;
       encoderValue = encoderReadDouble();
@@ -260,7 +280,6 @@ if (scanningStage > 0) {
       transferRecordStage = 1; //set to 1 to initiate transfer of record from the magazine to the turntable
       transferRecordWatchdogNowMillis = millis(); //set up the timer to watch record transfer
       transferRecordWatchdogPrevMillis = millis();
-    } //stage 2 - found correct position?
   } //end scanning stage 2
 
   //watchdog timer check. A full revolution should take around 16 seconds. If we are trying to scan for more than 20 seconds, something is wrong.
@@ -274,7 +293,7 @@ if (scanningStage > 0) {
       scanningStage = 0; //scan complete
       ledDisplayError(1); //scan error
     } //scan timer triggered
-
+  } //scanning stage = 2
 } //scanning stage > 0
 } //end function scanForRecordAsync
 

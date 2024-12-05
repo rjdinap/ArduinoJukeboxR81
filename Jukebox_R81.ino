@@ -1,7 +1,6 @@
 //Robert DiNapoli 2024
-#define VERSION 110
+#define VERSION 111
 #define RGBLIGHTS  //comment out this line if you aren't going to use RGB lights in your front panel
-
 
 // 000 - stop current song. next song in queue should play. In record player mode, will return the record from the turntable to the magazine.
 // 100 to 299 - queue the song to play 
@@ -260,7 +259,7 @@ uint8_t playcmd[] = {0x7E, 0xFF, 0x06, 0x0f, 0x00, 0x02, 0x01, 0xEF};
 uint8_t eqcmd[] = {0x7E, 0xFF, 0x06, 0x07, 0x00, 0x02, 0x01, 0xEF}; //built in equalizer // I don't notice too much difference using these, so didn't code for it.
 uint8_t volcmd[] = {0x7E, 0xFF, 0x06, 0x06, 0x00, 0x00, 0x1e, 0xEF}; //max volume of 30
 /*a query with 0x48 will show you the number of songs on the whole flash card - in all folders. so if have 2 songs in folder 01 and 4 songs in
-/folder 2, the 48 query will return 6 songs. Using the 0x08 command, you can play the absolute song number - no matter which folder the song is in*/
+/folder 2, the 48 query will return 6 songs. Using the 0x03 command, you can play the absolute song number - no matter which folder the song is in*/
 uint8_t querycmd[] = {0x7E, 0xFF, 0x06, 0x48, 0x00, 0x00, 0x00, 0xEF}; 
 uint8_t playabsolutesongnumbercmd[] = {0x7E, 0xFF, 0x06, 0x03, 0x00, 0x00, 0xca, 0xEF};
 //record player stuff
@@ -379,8 +378,7 @@ delay(1500);
 long randomL = ar.getRandomLong();
 randomSeed(randomL); 
 debugSerial("Random seed: " + String(randomL));
-//debugSerial("Random methods: " + String(ar.getLastRunCode()));
-credits = 0;
+//debugSerial("Random methods: " + String(ar.getLastRunCode())); //quick test shows the arduino mega is using all 4 randomization methods
 
 //key setup
 KeyReset.begin();
@@ -406,7 +404,7 @@ if (isMp3Player == 1) { //if are on mp3 player, get the total songs available. /
 }
 
 readPreferencesFromEEPROM();  //pull volume, play mode, folder number, etc from memory
-//if we using phono, do not auto start playing records from sequential mode or random mode.
+//if we using phono, reset the play mode to zero - do not auto start playing records from sequential mode or random mode.
 //The reason for this, is that we don't know if a record is currently on the turntable from a bad shutdown
 if (isMp3Player == 0) {
   playMode = 0;
@@ -436,7 +434,7 @@ void loop() {
   processCommandFromQueue(); //process any commands in queue
   checkForNextSong(); //check if a song is playing. If no song playing, and there are songs in queue, grab the next song from queue and play it.
   ledUpdateDisplay(); //decide what to print on the led array, either the current inputstring, or the current song playing, or blink the text for a command entered
-  checkForCreditFlag(); //ISR will flag that the credit switch was triggered. Handle it here.
+  checkForCreditFlag(); //ISR will flag that the cr----------edit switch was triggered. Handle it here.
   if (isMp3Player == 0) { //phono mode
     recordScanAsync(); //check to see if we need to scan for a new record. triggered by setting scanningState to 1 in playSong()
     recordTransferAsync(); //check to see if we need to transfer a record from the magazine. triggered by setting transferRecordStage to 1 in scanForRecordAsync()
@@ -729,9 +727,10 @@ void ledBlinkSetup(String b, int count, int delay) {
 } //end function ledBlinkSetup
 
 
-
+//display an error code wait for a keypress for acknowledgement
 void ledDisplayError(int errorNumber) {
   int exitFlag = 0;
+  songList.clear(); //clear the song list. we don't want the unit trying to scan or transfer the next record if the user hasn't cleared the current problem
   if (errorNumber == 1) {
     debugSerial("Error: Scan took more than 20 seconds. Press any key to acknowledge.");
     ledDisplayDigits("scn");
@@ -747,6 +746,11 @@ void ledDisplayError(int errorNumber) {
     ledDisplayDigits("rtn");
     transferRecordWatchdogNowMillis = millis;
     transferRecordWatchdogPrevMillis = millis;
+  } else if (errorNumber == 4) {
+    debugSerial("Error: Scan Stage 2 took more than 1 second. Press any key to acknowledge.");
+    ledDisplayDigits("sc2");
+    scanRecordWatchdogNowMillis = millis;
+    scanRecordWatchdogPrevMillis = millis;
   }
 
   while (exitFlag == 0) {
