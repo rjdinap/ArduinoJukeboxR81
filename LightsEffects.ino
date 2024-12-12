@@ -182,7 +182,6 @@ if (isRecordPlaying == 0 && transferRecordStage ==0 ) {
 //based on the 3 digit number input from the keypad, setup the lights routine to display
 void lightsSelector() {
   debugSerial("Setting lights pattern to: " + String(inputSelectionNumber));
-  randomSeed(millis());
   if (inputSelectionNumber == 600) {
     AlaColor colorsArray[1] = { Black }; 
     AlaPalette colorsPalette = { 1, colorsArray };

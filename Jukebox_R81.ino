@@ -1,9 +1,10 @@
 //Robert DiNapoli 2024
-#define VERSION 111
+//rjgee@hotmail.com
+#define VERSION 112
 #define RGBLIGHTS  //comment out this line if you aren't going to use RGB lights in your front panel
 
 // 000 - stop current song. next song in queue should play. In record player mode, will return the record from the turntable to the magazine.
-// 100 to 299 - queue the song to play 
+// 100 to 299 - queue a song to play 
 // 600 to 699 - lights commands - see below
 // 700 to 730 - set the volume - mp3 player only
 // 750 - back to normal play mode, mode 0 - non continuous 
@@ -92,7 +93,7 @@
 #include <QList.h> //Martin Dagarin
 #include <Arduino.h>
 #include <AceTMI.h> //Brian T Park
-#include <AceSegment.h> // Tm1637Module
+#include <AceSegment.h> // Tm1637Module //Brian T Park
 #include <EEPROM.h> 
 //#define THROW_ERROR_IF_NOT_FAST // only for compile test... Activate this to detect where ...Fast() functions are called with NON constant parameters and are therefore still slow.
 #include <digitalWriteFast.h> //Watterrott
@@ -533,9 +534,10 @@ void checkForCreditFlag() {
 //grab the next item from the song queue and play it
 void checkForNextSong() {
   if (isMp3Player == 1) {
-    //we need to wait at least 2.5 seconds since the play command to make sure the mp3 player has gone "busy"
+    //we need to wait at least 3.5 seconds since the play command to make sure the mp3 player has gone "busy"
+    //might be my imagination, but this seems to take longer with more songs on the sdcard...
     playCommandNowMillis = millis();
-    if ((uint16_t) (playCommandNowMillis - playCommandPrevMillis) >= 2500) { 
+    if ((uint16_t) (playCommandNowMillis - playCommandPrevMillis) >= 3500) { 
       playCommandPrevMillis = playCommandNowMillis;
       isMP3Playing = digitalReadFast(MP3PLAYER_BUSY); //1 - idle //0 - song playing
       if (isMP3Playing == 1) { //if the mp3 player is idle
@@ -922,9 +924,9 @@ void playSong(uint8_t cmd[], int size) {
 //pull a command from the command queue, and send it to the mp3 player
 void processCommandFromQueue() {
   if (commandList.size() > 0) {
-    //only execute a command once per second
+    //only execute a command once every 2 seconds
     commandNowMillis = millis();
-    if ((uint16_t) (commandNowMillis - commandPrevMillis) >= 1500) { 
+    if ((uint16_t) (commandNowMillis - commandPrevMillis) >= 2000) { 
       commandPrevMillis = commandNowMillis;
       ci = commandList.front();
       commandList.pop_front();
