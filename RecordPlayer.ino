@@ -251,10 +251,13 @@ if (scanningStage > 0) {
       //fraction of a second later when the encoder shows the correct position. If you have any issues, try commenting out the next 2 lines
       delay(50); 
       digitalWriteFast(DETENT_COIL, HIGH); //off
+      digitalWriteFast(MAGAZINE_MOTOR, HIGH); //off
       encoderValue = encoderReadDouble();
       //debugSerial("Encoder value: " + String(encoderValue,HEX));    
       while (encoderValue != recordNumberHex) {
         encoderValue = encoderReadDouble();
+        digitalWriteFast(DETENT_COIL, LOW); //on
+        digitalWriteFast(MAGAZINE_MOTOR, LOW); //on
         //debugSerial("Encoder value: " + String(encoderValue,HEX));    
         //Scan 2 should take less than 1 second.
         transferRecordWatchdogNowMillis = millis();

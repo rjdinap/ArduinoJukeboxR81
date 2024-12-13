@@ -1,6 +1,6 @@
 //Robert DiNapoli 2024
 //rjgee@hotmail.com
-#define VERSION 112
+#define VERSION 113
 #define RGBLIGHTS  //comment out this line if you aren't going to use RGB lights in your front panel
 
 // 000 - stop current song. next song in queue should play. In record player mode, will return the record from the turntable to the magazine.
