@@ -751,8 +751,8 @@ void ledDisplayError(int errorNumber) {
   } else if (errorNumber == 4) {
     debugSerial("Error: Scan Stage 2 took more than 1 second. Press any key to acknowledge.");
     ledDisplayDigits("sc2");
-    scanRecordWatchdogNowMillis = millis;
-    scanRecordWatchdogPrevMillis = millis;
+    transferRecordWatchdogNowMillis = millis;
+    transferRecordWatchdogPrevMillis = millis;
   }
 
   while (exitFlag == 0) {
